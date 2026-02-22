@@ -6,8 +6,18 @@ const Withdrawal = require('../models/Withdrawal');
 const CheckoutSession = require('../models/CheckoutSession');
 const crypto = require('crypto');
 
-router.get('/', async (req, res) => {
-    res.render('index');
+router.get('/', (req, res) => {
+    const subdomainMap = {
+        'dercio': 'login_user_one',
+        'rafael': 'login_user_two',
+        'home': 'index',
+        'obrigado': 'thank_you'
+    };
+
+    const host = req.hostname || '';
+    const subdomain = Object.keys(subdomainMap).find(s => host.startsWith(`${s}.`));
+
+    res.render(subdomain ? subdomainMap[subdomain] : 'index');
 });
 
 // Robust checkout initialization
