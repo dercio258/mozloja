@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOZCOMPRAS - Sua loja de infoprodutos</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .hero {
+            padding: 8rem 2rem;
+            text-align: center;
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            color: white;
+            border-bottom-left-radius: 3rem;
+            border-bottom-right-radius: 3rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.025em;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            max-width: 600px;
+            margin: 0 auto 2.5rem;
+            opacity: 0.9;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background: white;
+            color: #6366f1;
+            padding: 1rem 2.5rem;
+            border-radius: 9999px;
+            font-size: 1.125rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+            background: #f8fafc;
+        }
+
+        .features {
+            max-width: 1200px;
+            margin: -4rem auto 4rem;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: var(--text-main);
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 50;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .close {
+            position: absolute;
+            top: 1.25rem;
+            right: 1.25rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .registration-form h2 {
+            margin-bottom: 1.5rem;
+            text-align: center;
+            color: var(--text-main);
+        }
+
+        .registration-form p.info {
+            background: #f0f9ff;
+            color: #0369a1;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #0ea5e9;
+        }
+
+        .nav-links .nav-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 0.5rem 1.25rem;
+            border-radius: 9999px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-left: 0.5rem;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+        }
+
+        .nav-links .nav-btn.btn-primary {
+            background: white;
+            color: #6366f1;
+        }
+
+        .nav-links .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-links .nav-btn.btn-primary:hover {
+            background: #f8fafc;
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <div class="logo">MOZCOMPRAS</div>
+        <div class="nav-links">
+            <a href="/loja" class="nav-btn">Ver Loja</a>
+            <button class="nav-btn" id="openLogin">Login</button>
+            <button class="nav-btn btn-primary" id="openRegister">Registar</button>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <h1>Transforme seu conhecimento em<br>lucro com a MOZCOMPRAS</h1>
+        <p>A plataforma mais completa para vender e comprar infoprodutos em Moçambique.</p>
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+            <a href="/loja" class="cta-button">ACEDER À LOJA</a>
+            <button class="cta-button"
+                style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.4);"
+                onclick="document.getElementById('registerModal').style.display = 'flex'">QUERO VENDER</button>
+        </div>
+    </header>
+
+    <section class="features">
+        <div class="feature-card">
+            <h3>Facilidade de Venda</h3>
+            <p>Cadastre seus produtos em minutos e comece a vender imediatamente usando M-Pesa e e-Mola.</p>
+        </div>
+        <div class="feature-card">
+            <h3>Segurança Total</h3>
+            <p>Seus pagamentos são processados com as tecnologias de segurança mais modernas do mercado.</p>
+        </div>
+        <div class="feature-card">
+            <h3>Suporte 24/7</h3>
+            <p>Nossa equipe está sempre disponível para ajudar você em cada passo da sua jornada.</p>
+        </div>
+    </section>
+
+    <!-- Modal de Registo -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="document.getElementById('registerModal').style.display='none'">&times;</span>
+            <div class="registration-form">
+                <h2>Crie sua conta</h2>
+                <p class="info">
+                    <strong>Informação:</strong> Após submeter o pedido, a sua conta será verificada e irá receber as
+                    credenciais no email dentro de 24 horas.
+                </p>
+                <form onsubmit="handleMockRegister(event)">
+                    <div class="form-group">
+                        <label>Nome Completo</label>
+                        <input type="text" placeholder="Seu nome" required>
+                    </div>
+                    <div class="form-group">
+                        <label>E-mail</label>
+                        <input type="email" placeholder="seu@email.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Telefone</label>
+                        <input type="tel" placeholder="Ex: 841234567" required>
+                    </div>
+                    <button type="submit">Solicitar Acesso</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Login -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="document.getElementById('loginModal').style.display='none'">&times;</span>
+            <div class="registration-form">
+                <h2>Entrar na Plataforma</h2>
+                <p style="text-align: center; color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                    Aceda ao seu painel de vendedor
+                </p>
+                <form onsubmit="handleMockLogin(event)">
+                    <div class="form-group">
+                        <label>E-mail</label>
+                        <input type="email" placeholder="seu@email.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Palavra-passe</label>
+                        <input type="password" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit">Entrar</button>
+                </form>
+                <p style="text-align: center; margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                    Não tem conta? <a href="#"
+                        onclick="event.preventDefault(); document.getElementById('loginModal').style.display='none'; document.getElementById('registerModal').style.display='flex';"
+                        style="color: #6366f1; font-weight: 600; text-decoration: none;">Registar agora</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const registerModal = document.getElementById("registerModal");
+        const loginModal = document.getElementById("loginModal");
+
+        const openRegister = document.getElementById("openRegister");
+        const openLogin = document.getElementById("openLogin");
+
+        if (openRegister) openRegister.onclick = () => registerModal.style.display = "flex";
+        if (openLogin) openLogin.onclick = () => loginModal.style.display = "flex";
+
+        window.onclick = function (event) {
+            if (event.target == registerModal) registerModal.style.display = "none";
+            if (event.target == loginModal) loginModal.style.display = "none";
+        }
+
+        function handleMockRegister(e) {
+            e.preventDefault();
+            alert('Conta enviada para verificação! Irá receber as suas credenciais no email dentro de 24 horas.');
+            registerModal.style.display = "none";
+            e.target.reset();
+        }
+
+        function handleMockLogin(e) {
+            e.preventDefault();
+            alert('Erro: Conta não encontrada.');
+        }
+    </script>
+</body>
+
+</html>

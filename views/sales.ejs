@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOZCOMPRAS - Vendas</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+    <nav>
+        <div class="logo">MOZCOMPRAS</div>
+        <div class="nav-links">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/sales">Vendas</a>
+            <a href="/products">Produtos</a>
+            <a href="/products/new">Cadastrar Produto</a>
+            <a href="/integrations">Integrações</a>
+            <a href="/auth/logout">Sair</a>
+        </div>
+    </nav>
+    <div class="container">
+        <h1>Minhas Vendas</h1>
+        <div class="sales-list">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Cliente / E-mail</th>
+                        <th>Telefone</th>
+                        <th>Produto</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (locals.sales && sales.length> 0) { %>
+                        <% sales.forEach(function(sale) { %>
+                            <tr>
+                                <td>
+                                    <%= new Date(sale.createdAt || sale.date).toLocaleString('pt-PT', { day: '2-digit' ,
+                                        month: '2-digit' , year: 'numeric' , hour: '2-digit' , minute: '2-digit' }) %>
+                                </td>
+                                <td>
+                                    <strong>
+                                        <%= sale.customer %>
+                                    </strong><br>
+                                    <span style="font-size: 0.8em; color: var(--text-muted);">
+                                        <%= sale.email || 'N/D' %>
+                                    </span>
+                                </td>
+                                <td>
+                                    <%= sale.phone || 'N/D' %>
+                                </td>
+                                <td>
+                                    <%= sale.product %>
+                                </td>
+                                <td>
+                                    <%= sale.amount %> MT
+                                </td>
+                                <td>
+                                    <span class="status-badge status-<%= sale.status.toLowerCase() %>">
+                                        <%= sale.status==='Completed' ? 'Concluído' : (sale.status==='Pending'
+                                            ? 'Pendente' : sale.status) %>
+                                    </span>
+                                </td>
+                            </tr>
+                            <% }); %>
+                                <% } else { %>
+                                    <tr>
+                                        <td colspan="6" style="padding: 10px; text-align: center;">Nenhuma venda
+                                            encontrada.</td>
+                                    </tr>
+                                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+
+</html>

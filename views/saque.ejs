@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOZCOMPRAS - Saque (B2C)</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .container {
+            max-width: 600px;
+        }
+
+        .header-title {
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: var(--radius);
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background-color: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .alert-error {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .payment-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .payment-option {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .payment-option input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .payment-tile {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            transition: all 0.2s;
+            background: #fff;
+        }
+
+        .payment-tile:hover {
+            border-color: #cbd5e1;
+        }
+
+        .payment-tile img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            border-radius: 6px;
+        }
+
+        .payment-option input:checked+.payment-tile {
+            border-color: var(--primary-color);
+            background-color: rgba(99, 102, 241, 0.04);
+            box-shadow: 0 0 0 1px var(--primary-color);
+        }
+
+        .payment-tile span {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <div class="logo">MOZCOMPRAS</div>
+        <div class="nav-links">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/products">Produtos</a>
+            <a href="/sales">Vendas</a>
+            <a href="/saque" style="color: var(--primary-color);">Saque</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+            <h1 class="header-title" style="margin-bottom: 0;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-color);">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                Solicitar Saque (B2C)
+            </h1>
+            <div style="text-align: right;">
+                <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase;">Saldo
+                    Disponível</p>
+                <p style="margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--success-color);">
+                    <%= (locals.balance || 0).toFixed(2) %> MT
+                </p>
+            </div>
+        </div>
+
+        <% if (locals.success) { %>
+            <div class="alert alert-success">
+                <%= success %>
+            </div>
+            <% } %>
+
+                <% if (locals.error) { %>
+                    <div class="alert alert-error">
+                        <%= error %>
+                    </div>
+                    <% } %>
+
+                        <form action="/saque/process" method="POST" style="margin-bottom: 3rem;">
+                            <label style="margin-bottom: 0.75rem; font-weight: 600;">Selecione a Carteira de
+                                Destino</label>
+                            <div class="payment-options">
+                                <label class="payment-option">
+                                    <input type="radio" name="provider" value="mpesa" checked required>
+                                    <div class="payment-tile">
+                                        <img src="https://res.cloudinary.com/dndlqdylc/image/upload/v1771597297/mpesaIcon_rht9mz.jpg"
+                                            alt="M-Pesa">
+                                        <span>M-Pesa</span>
+                                    </div>
+                                </label>
+                                <label class="payment-option">
+                                    <input type="radio" name="provider" value="emola" required>
+                                    <div class="payment-tile">
+                                        <img src="https://res.cloudinary.com/dndlqdylc/image/upload/v1771597297/emola_ykhnhj.png"
+                                            alt="Emola">
+                                        <span>eMola</span>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="input-group">
+                                <label>Número do Beneficiário (84/85)</label>
+                                <input type="tel" name="phone" placeholder="Ex: 841234567" required>
+                            </div>
+
+                            <div class="input-group">
+                                <label>Valor do Saque (MT)</label>
+                                <input type="number" name="amount" placeholder="Ex: 500" min="1" step="0.01"
+                                    max="<%= (locals.balance || 0) %>" required>
+                            </div>
+
+                            <button type="submit" style="margin-top: 1rem;" <%=(locals.balance || 0) < 1 ? 'disabled'
+                                : '' %>>Confirmar Saque</button>
+                        </form>
+
+                        <h2
+                            style="font-size: 1.25rem; margin-bottom: 1rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+                            Histórico de Saques</h2>
+                        <div
+                            style="background: white; border-radius: var(--radius); border: 1px solid var(--border-color); overflow: hidden;">
+                            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                                <thead style="background: #f8fafc; border-bottom: 1px solid var(--border-color);">
+                                    <tr>
+                                        <th
+                                            style="padding: 1rem; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase;">
+                                            ID / Ref</th>
+                                        <th
+                                            style="padding: 1rem; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase;">
+                                            Método</th>
+                                        <th
+                                            style="padding: 1rem; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase;">
+                                            Status</th>
+                                        <th
+                                            style="padding: 1rem; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; text-align: right;">
+                                            Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% if (locals.withdrawals && withdrawals.length> 0) { %>
+                                        <% withdrawals.slice().reverse().forEach(function(wd) { %>
+                                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                <td style="padding: 1rem; font-size: 0.9rem; font-weight: 500;">
+                                                    <%= wd.id %><br><span
+                                                            style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">
+                                                            <%= wd.ref %>
+                                                        </span>
+                                                </td>
+                                                <td style="padding: 1rem; font-size: 0.9rem;">
+                                                    <%= wd.method.toUpperCase() %>
+                                                </td>
+                                                <td style="padding: 1rem; font-size: 0.9rem;">
+                                                    <% if (wd.status==='Concluído' ) { %>
+                                                        <span
+                                                            style="padding: 0.25rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; background: #dcfce7; color: #166534;">
+                                                            <%= wd.status %>
+                                                        </span>
+                                                        <% } else { %>
+                                                            <span
+                                                                style="padding: 0.25rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; background: #fee2e2; color: #991b1b;">
+                                                                <%= wd.status %>
+                                                            </span>
+                                                            <% } %>
+                                                </td>
+                                                <td
+                                                    style="padding: 1rem; font-size: 0.95rem; font-weight: 600; text-align: right; color: var(--primary-color);">
+                                                    <%= wd.amount.toFixed(2) %> MT
+                                                </td>
+                                            </tr>
+                                            <% }); %>
+                                                <% } else { %>
+                                                    <tr>
+                                                        <td colspan="4"
+                                                            style="padding: 2rem 1rem; text-align: center; color: var(--text-muted);">
+                                                            Nenhum saque efetuado.</td>
+                                                    </tr>
+                                                    <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+    </div>
+</body>
+
+</html>

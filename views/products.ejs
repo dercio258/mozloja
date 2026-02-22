@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOZCOMPRAS - Produtos</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <!-- Integration Scripts -->
+    <% if (pixelId) { %>
+        <!-- Pixel Script with ID <%= pixelId %> -->
+        <script>
+            console.log('Pixel initialized with ID: <%= pixelId %>');
+        </script>
+        <% } %>
+            <% if (utmifyId) { %>
+                <!-- Utmify Script with ID <%= utmifyId %> -->
+                <script>
+                    console.log('Utmify initialized with ID: <%= utmifyId %>');
+                </script>
+                <% } %>
+</head>
+
+<body>
+    <nav>
+        <div class="logo">MOZCOMPRAS</div>
+        <div class="nav-links">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/sales">Vendas</a>
+            <a href="/products">Produtos</a>
+            <a href="/products/new">Cadastrar Produto</a>
+            <a href="/integrations">Integrações</a>
+            <a href="/auth/logout">Sair</a>
+        </div>
+    </nav>
+    <div class="container">
+        <h1>Nossos Produtos</h1>
+        <div class="product-grid">
+            <% products.forEach(function(product) { %>
+                <div class="product-card">
+                    <img src="<%= product.image %>" alt="<%= product.name %>">
+                    <div class="product-info">
+                        <h3>
+                            <%= product.name %>
+                        </h3>
+                        <p class="price">
+                            <%= product.price %> MT
+                        </p>
+                        <div
+                            style="margin: 1rem 0; padding: 0.75rem; background: #f8fafc; border-radius: 0.5rem; border: 1px dashed #cbd5e1; font-size: 0.8rem;">
+                            <strong>Link de Checkout:</strong><br>
+                            <a href="/checkout/init/<%= product.id %>"
+                                style="word-break: break-all; color: var(--primary-color);">
+                                <%= baseUrl %>/checkout/init/
+                                    <%= product.id %>
+                            </a>
+
+                            <div style="margin-top: 0.5rem; color: var(--text-muted);">
+                                <strong>Integrações:</strong><br>
+                                Pixel: <span style="color:var(--text-main)">
+                                    <%= product.pixel_id || 'Não configurado' %>
+                                </span><br>
+                                Utmify: <span style="color:var(--text-main)">
+                                    <%= product.utmify_id || 'Não configurado' %>
+                                </span><br>
+                                Webhook: <span style="color:var(--text-main); word-break: break-all;">
+                                    <%= product.webhook_url || 'Não configurado' %>
+                                </span>
+                            </div>
+                            <button class="btn-update"
+                                onclick="openIntegrationModal('<%= product.id %>', '<%= product.pixel_id || '' %>', '<%= product.utmify_id || '' %>', '<%= product.webhook_url || '' %>')">
+                                Configurar Integrações
+                            </button>
+                        </div>
+                        <a href="/checkout?product=<%= product.id %>" class="btn">Testar Checkout</a>
+                    </div>
+                </div>
+                <% }); %>
+        </div>
+    </div>
+    </div>
+
+    <!-- Modal de Integrações -->
+    <div id="intModal" class="modal-int">
+        <div class="modal-int-content">
+            <div class="modal-int-header">
+                <h2 style="font-size: 1.25rem;">Configurar Rastreamento</h2>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Configure os IDs para Meta Pixel, Utmify e
+                    Webhook.</p>
+            </div>
+            <form id="updateIntForm" method="POST">
+                <div class="form-group">
+                    <label>Pixel ID</label>
+                    <input type="text" name="pixel_id" id="modalPixel" placeholder="Ex: 123456789">
+                </div>
+                <div class="form-group">
+                    <label>Utmify ID</label>
+                    <input type="text" name="utmify_id" id="modalUtmify" placeholder="Ex: utm_123">
+                </div>
+                <div class="form-group">
+                    <label>Webhook URL</label>
+                    <input type="url" name="webhook_url" id="modalWebhook" placeholder="https://seu-site.com/webhook">
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="submit" style="flex: 1;">Salvar</button>
+                    <button type="button" onclick="closeIntModal()"
+                        style="flex: 1; background: #f1f5f9; color: var(--text-main); border: 1px solid #cbd5e1;">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openIntegrationModal(id, pixel, utm, webhook) {
+            const modal = document.getElementById('intModal');
+            const form = document.getElementById('updateIntForm');
+            form.action = '/products/update-integrations/' + id;
+
+            document.getElementById('modalPixel').value = pixel;
+            document.getElementById('modalUtmify').value = utm;
+            document.getElementById('modalWebhook').value = webhook;
+
+            modal.style.display = 'flex';
+        }
+
+        function closeIntModal() {
+            document.getElementById('intModal').style.display = 'none';
+        }
+
+        window.onclick = function (event) {
+            const modal = document.getElementById('intModal');
+            if (event.target == modal) {
+                closeIntModal();
+            }
+        }
+    </script>
+</body>
+
+</html>

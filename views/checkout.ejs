@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOZCOMPRAS - Checkout</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            /* Full height center alignment to avoid scroll */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+            background-color: var(--bg-color);
+            box-sizing: border-box;
+        }
+
+        .compact-container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .header-title {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .checkout-grid {
+            display: grid;
+            grid-template-columns: 1fr 280px;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .summary-card {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+        }
+
+        .summary-card h3 {
+            font-size: 0.9rem;
+            margin-top: 0;
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+
+        .form-section {
+            padding: 1rem;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            margin-bottom: 1rem;
+        }
+
+        .form-section:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Compact Inputs */
+        .form-group {
+            margin-bottom: 0.75rem;
+        }
+
+        .form-group label {
+            font-size: 0.75rem;
+            margin-bottom: 0.25rem;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            border-radius: 0.375rem;
+        }
+
+        .row-inputs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .row-inputs>div {
+            flex: 1;
+            min-width: 140px;
+        }
+
+        /* Payment Options UI */
+        .payment-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .payment-option {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .payment-option input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .payment-tile {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem 0.5rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+            background: #fff;
+        }
+
+        .payment-tile:hover {
+            border-color: #cbd5e1;
+            transform: translateY(-1px);
+        }
+
+        .payment-tile img {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .payment-option input:checked+.payment-tile {
+            border-color: var(--primary-color);
+            background-color: rgba(99, 102, 241, 0.04);
+            box-shadow: 0 0 0 1px var(--primary-color);
+        }
+
+        .payment-tile span {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--text-main);
+        }
+
+        .checkout-final-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-top: 1rem;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .checkout-final-info span:first-child {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .total-pay-row {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .mobile-order-info {
+            display: none;
+            background: #fff;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid #f1f5f9;
+        }
+
+        /* Modal de Pagamento Interativo */
+        .payment-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .payment-modal-content {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            animation: modalAppear 0.3s ease-out;
+        }
+
+        @keyframes modalAppear {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .modal-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .modal-icon.pending {
+            background: #e0f2fe;
+            color: #0ea5e9;
+            animation: pulse 2s infinite;
+        }
+
+        .modal-icon.success {
+            background: #dcfce7;
+            color: #22c55e;
+        }
+
+        .modal-icon.error {
+            background: #fee2e2;
+            color: #ef4444;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.4);
+            }
+
+            70% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 15px rgba(14, 165, 233, 0);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(14, 165, 233, 0);
+            }
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: var(--text-main);
+        }
+
+        .modal-text {
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn-retry {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .btn-retry:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+                align-items: flex-start;
+            }
+
+            .compact-container {
+                padding: 1.25rem;
+                gap: 1rem;
+                border-radius: 0;
+                box-shadow: none;
+                min-height: 100vh;
+            }
+
+            .checkout-grid {
+                grid-template-columns: 1fr;
+                gap: 1.25rem;
+            }
+
+            .summary-card {
+                order: -1;
+                margin-bottom: 0.5rem;
+            }
+
+            .header-title {
+                font-size: 1.15rem;
+            }
+
+            .form-section {
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+
+            .row-inputs {
+                flex-direction: column;
+                gap: 0;
+            }
+
+            .payment-options {
+                grid-template-columns: 1fr 1fr;
+                gap: 0.75rem;
+            }
+        }
+    </style>
+
+    <!-- Meta Pixel & Global Config -->
+    <div id="pixel-config" data-product-id="<%= locals.product ? product.id : '' %>"
+        data-product-name="<%= locals.product ? product.name : '' %>"
+        data-pixel-id="<%= locals.product ? (product.pixel_id || '') : '' %>" style="display: none;"></div>
+
+    <script>
+        (function () {
+            const config = document.getElementById('pixel-config');
+            if (config && config.dataset.productId) {
+                window.productId = config.dataset.productId;
+                window.productName = config.dataset.productName;
+                window.pixelId = config.dataset.pixelId;
+
+                // Save to localStorage for meta-pixel-unified.js
+                if (window.pixelId) {
+                    localStorage.setItem('currentPixelId', window.pixelId);
+                    localStorage.setItem('currentProductId', window.productId);
+                    localStorage.setItem('currentProductName', window.productName);
+                }
+            }
+        })();
+    </script>
+    <script src="/js/meta-pixel-unified.js" async></script>
+</head>
+
+<body>
+    <div class="compact-container">
+        <h1 class="header-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round" style="color: var(--success-color);">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            Pagamento Seguro
+        </h1>
+
+        <div class="checkout-grid">
+            <div class="checkout-form">
+                <form action="/process" method="POST">
+                    <% let basePrice=locals.product ? product.price : (locals.amount || 0); let
+                        calculatedPrice=basePrice; if (gatilhoDesconto && gatilhoDesconto !=='off' ) { let
+                        dVal=parseFloat(gatilhoDesconto); if (!isNaN(dVal) && dVal> 0 && dVal <= 100) {
+                            calculatedPrice=basePrice - (basePrice * (dVal / 100)); } } %>
+                            <% if (locals.product) { %>
+                                <input type="hidden" name="productId" value="<%= product.id %>">
+                                <input type="hidden" name="amount" value="<%= calculatedPrice.toFixed(2) %>">
+                                <input type="hidden" name="sessionToken" value="<%= locals.sessionToken || '' %>">
+                                <% } %>
+
+                                    <div class="form-section">
+                                        <div class="form-group row-inputs">
+                                            <div>
+                                                <label>Nome Completo</label>
+                                                <input type="text" name="name" placeholder="Como no documento" required>
+                                            </div>
+                                            <div>
+                                                <label>E-mail</label>
+                                                <input type="email" name="email" placeholder="seu@email.com" required>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-section">
+                                        <label
+                                            style="margin-bottom: 0.5rem; font-weight: 600; font-size: 0.75rem; display: block; color: var(--text-muted); text-transform: uppercase;">Método
+                                            de Pagamento</label>
+                                        <div class="payment-options">
+                                            <label class="payment-option">
+                                                <input type="radio" name="provider" value="mpesa" required>
+                                                <div class="payment-tile">
+                                                    <img src="https://res.cloudinary.com/dndlqdylc/image/upload/v1771597297/mpesaIcon_rht9mz.jpg"
+                                                        alt="M-Pesa">
+                                                    <span>M-Pesa</span>
+                                                </div>
+                                            </label>
+                                            <label class="payment-option">
+                                                <input type="radio" name="provider" value="emola" required>
+                                                <div class="payment-tile">
+                                                    <img src="https://res.cloudinary.com/dndlqdylc/image/upload/v1771597297/emola_ykhnhj.png"
+                                                        alt="Emola">
+                                                    <span>Emola</span>
+                                                </div>
+                                            </label>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label id="phone-label">Número Móvel (84/85)</label>
+                                            <input type="tel" name="phone" id="phone-input" placeholder="Ex: 841234567"
+                                                maxlength="9" minlength="9" required>
+                                        </div>
+
+                                        <div class="checkout-final-info">
+                                            <span>Total a pagar</span>
+                                            <span class="total-pay-row">
+                                                <%= calculatedPrice.toFixed(2) %> MT
+                                            </span>
+                                        </div>
+
+                                        <button type="submit" class="btn-pay">Pagar Agora</button>
+
+                                        <p
+                                            style="font-size: 0.7rem; color: var(--text-muted); margin: 0; text-align: center; margin-top: 0.5rem;">
+                                            🔒 Processado com segurança pela MOZCOMPRAS
+                                        </p>
+                                    </div>
+                </form>
+            </div>
+
+            <div class="summary-card">
+                <% if (gatilhoTimer) { %>
+                    <div class="timer-banner"
+                        style="background: #fee2e2; color: #991b1b; padding: 0.75rem; text-align: center; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 700; margin-bottom: 1rem; border: 1px solid #fecaca; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: 0 4px 6px -1px rgba(254, 202, 202, 0.5);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        A oferta expira em: <span id="countdown-timer">15:00</span>
+                    </div>
+                    <% } %>
+
+                        <% let finalPrice=locals.product ? product.price : (locals.amount || 0); let oldPrice=null; if
+                            (gatilhoDesconto && gatilhoDesconto !=='off' ) { let
+                            discountVal=parseFloat(gatilhoDesconto); if (!isNaN(discountVal) && discountVal> 0 &&
+                            discountVal <= 100) { oldPrice=finalPrice; finalPrice=finalPrice - (finalPrice *
+                                (discountVal / 100)); } } %>
+
+                                <% if (locals.product) { %>
+                                    <div style="display: flex; gap: 0.75rem; align-items: center;">
+                                        <img src="<%= product.image %>" alt="<%= product.name %>"
+                                            style="width: 50px; height: 50px; object-fit: cover; border-radius: 0.375rem; background: #fff; padding: 2px; border: 1px solid var(--border-color);">
+                                        <div style="flex: 1;">
+                                            <p
+                                                style="font-weight: 600; font-size: 0.85rem; margin: 0; line-height: 1.25; color: var(--text-main);">
+                                                <%= product.name %>
+                                            </p>
+                                            <% if (oldPrice) { %>
+                                                <p
+                                                    style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: var(--error-color); text-decoration: line-through;">
+                                                    De: <%= oldPrice %> MT
+                                                </p>
+                                                <p class="price"
+                                                    style="margin: 0; font-size: 1rem; color: var(--success-color);">
+                                                    Por: <%= finalPrice.toFixed(2) %> MT
+                                                </p>
+                                                <% } else { %>
+                                                    <p class="price"
+                                                        style="margin-top: 0.25rem; margin-bottom: 0; font-size: 0.95rem;">
+                                                        <%= finalPrice %> MT
+                                                    </p>
+                                                    <% } %>
+                                        </div>
+                                    </div>
+                                    <% } else { %>
+                                        <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Detalhes não
+                                            disponíveis.</p>
+                                        <% } %>
+            </div>
+        </div>
+    </div>
+
+    <% if (gatilhoTimer) { %>
+        <script>
+            // JS simples para fazer o timer de 15 minutos correr no lado do cliente
+            function startTimer(duration, display) {
+                var timer = duration, minutes, seconds;
+                setInterval(function () {
+                    minutes = parseInt(timer / 60, 10);
+                    seconds = parseInt(timer % 60, 10);
+
+                    minutes = minutes < 10 ? "0" + minutes : minutes;
+                    seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                    if (display) display.textContent = minutes + ":" + seconds;
+
+                    if (--timer < 0) {
+                        timer = 0; // Para no 0
+                    }
+                }, 1000);
+            }
+
+            window.onload = function () {
+                var fifteenMinutes = 60 * 15,
+                    display = document.querySelector('#countdown-timer');
+                if (display) startTimer(fifteenMinutes, display);
+            };
+        </script>
+        <% } %>
+
+            <!-- Modal de Pagamento -->
+            <div id="paymentModal" class="payment-modal">
+                <div class="payment-modal-content" id="modalContent">
+                    <!-- As variações serão inseridas aqui via JS -->
+                </div>
+            </div>
+
+            <script>
+                const checkoutForm = document.querySelector('form[action="/process"]');
+                const paymentModal = document.getElementById('paymentModal');
+                const modalContent = document.getElementById('modalContent');
+                const phoneInput = document.getElementById('phone-input');
+                const phoneLabel = document.getElementById('phone-label');
+                const providerRadios = document.querySelectorAll('input[name="provider"]');
+
+                // Dynamic UI updates based on provider
+                providerRadios.forEach(radio => {
+                    radio.addEventListener('change', function () {
+                        if (this.value === 'mpesa') {
+                            phoneLabel.textContent = 'Número Móvel (84/85)';
+                            phoneInput.placeholder = 'Ex: 841234567';
+                        } else if (this.value === 'emola') {
+                            phoneLabel.textContent = 'Número Móvel (86/87)';
+                            phoneInput.placeholder = 'Ex: 861234567';
+                        }
+                    });
+                });
+
+                if (checkoutForm) {
+                    checkoutForm.addEventListener('submit', async function (e) {
+                        e.preventDefault();
+
+                        const formData = new FormData(checkoutForm);
+                        const data = Object.fromEntries(formData.entries());
+
+                        // Validate Phone Prefix
+                        const phone = data.phone;
+                        const provider = data.provider;
+                        const prefix = phone.substring(0, 2);
+
+                        if (provider === 'mpesa' && !['84', '85'].includes(prefix)) {
+                            alert('Para M-Pesa, o número deve iniciar com 84 ou 85.');
+                            return;
+                        }
+
+                        if (provider === 'emola' && !['86', '87'].includes(prefix)) {
+                            alert('Para Emola, o número deve iniciar com 86 ou 87.');
+                            return;
+                        }
+
+                        if (phone.length !== 9) {
+                            alert('O número deve ter exatamente 9 dígitos.');
+                            return;
+                        }
+
+                        // Mostrar estado "Aguardando PIN"
+                        showModalState('pending');
+
+                        try {
+                            const response = await fetch('/process', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(data)
+                            });
+
+                            const result = await response.json();
+
+                            if (result.success) {
+                                // Trigger Purchase event manually for Pixel if pixelId exists
+                                if (window.pixelId && window.fbq) {
+                                    window.fbq('track', 'Purchase', {
+                                        value: parseFloat(data.amount),
+                                        currency: 'MZN',
+                                        content_name: window.productName,
+                                        content_ids: [window.productId]
+                                    });
+                                }
+
+                                showModalState('success');
+                                setTimeout(() => {
+                                    window.location.href = result.redirect;
+                                }, 2000);
+                            } else {
+                                showModalState('error', result.error);
+                            }
+                        } catch (err) {
+                            showModalState('error', 'Erro interno ao processar pagamento.');
+                        }
+                    });
+                }
+
+                function showModalState(state, errorMsg = '') {
+                    paymentModal.style.display = 'flex';
+
+                    if (state === 'pending') {
+                        modalContent.innerHTML = `
+                    <div class="modal-icon pending">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                    </div>
+                    <div class="modal-title">Aguardando Pagamento</div>
+                    <div class="modal-text">Confirme o pagamento no seu telemóvel. Introduza o PIN no seu celular.<br><strong>Não feche esta página</strong>. Estamos a aguardar a confirmação.</div>
+                `;
+                    } else if (state === 'success') {
+                        modalContent.innerHTML = `
+                    <div class="modal-icon success">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </div>
+                    <div class="modal-title">Sucesso!</div>
+                    <div class="modal-text">Pagamento confirmado. Redirecionando...</div>
+                `;
+                    } else if (state === 'error') {
+                        modalContent.innerHTML = `
+                    <div class="modal-icon error">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </div>
+                    <div class="modal-title">Pagamento Falhou</div>
+                    <div class="modal-text">Não foi possível confirmar o pagamento.<br>Por favor, tente novamente ou use outro método.</div>
+                    <button class="btn-retry" onclick="closePaymentModal()">Tentar Novamente</button>
+                `;
+                    }
+                }
+
+                function closePaymentModal() {
+                    paymentModal.style.display = 'none';
+                }
+            </script>
+</body>
+
+</html>

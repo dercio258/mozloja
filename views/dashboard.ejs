@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOZCOMPRAS - Dashboard</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Integration Scripts -->
+    <% if (pixelId) { %>
+        <!-- Pixel Script with ID <%= pixelId %> -->
+        <% } %>
+            <% if (utmifyId) { %>
+                <!-- Utmify Script with ID <%= utmifyId %> -->
+                <% } %>
+</head>
+
+<body>
+    <nav>
+        <div class="logo">MOZCOMPRAS</div>
+        <div class="nav-links">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/sales">Vendas</a>
+            <a href="/products">Produtos</a>
+            <a href="/saque">Saques</a>
+            <a href="/products/new">Cadastrar Produto</a>
+            <a href="/integrations">Integrações</a>
+            <a href="/auth/logout">Sair</a>
+        </div>
+    </nav>
+    <div class="container">
+        <h1>Painel de Controle</h1>
+        <div class="metrics"
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+            <div class="card" style="border-left: 4px solid var(--success-color); text-align: center;">
+                <h3 style="font-size: 0.85em; text-transform: uppercase;">Saldo Disponível</h3>
+                <p style="color: var(--success-color); font-size: 1.5rem; font-weight: 700;">
+                    <%= (balance || 0).toFixed(2) %> MT
+                </p>
+            </div>
+            <div class="card" style="text-align: center;">
+                <h3 style="font-size: 0.85em; text-transform: uppercase;">Receita Total</h3>
+                <p style="font-size: 1.5rem; font-weight: 700;">
+                    <%= (totalRevenue || 0).toFixed(2) %> MT
+                </p>
+            </div>
+            <div class="card" style="text-align: center;">
+                <h3 style="color: var(--success-color); font-size: 0.85em; text-transform: uppercase;">🟩 Sucedidas</h3>
+                <p style="font-size: 1.5rem; font-weight: 700;">
+                    <%= countSuccess || 0 %>
+                </p>
+            </div>
+            <div class="card" style="text-align: center;">
+                <h3 style="color: #f59e0b; font-size: 0.85em; text-transform: uppercase;">🟨 Pendentes</h3>
+                <p style="font-size: 1.5rem; font-weight: 700;">
+                    <%= countPending || 0 %>
+                </p>
+            </div>
+            <div class="card" style="text-align: center;">
+                <h3 style="color: var(--error-color); font-size: 0.85em; text-transform: uppercase;">🟥 Falhadas</h3>
+                <p style="font-size: 1.5rem; font-weight: 700;">
+                    <%= countFailed || 0 %>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-container" style="margin-top: 2rem; position: relative; height: 350px; width: 100%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 style="margin: 0;">Receita (<span id="currentChartLabel">Hoje</span>)</h2>
+            <div class="chart-filters" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button onclick="updateChart('Hoje')" class="chart-btn active"
+                    style="padding: 0.25rem 0.5rem; font-size: 0.75rem; width: auto; background: var(--primary-color); color: #fff;">Hoje</button>
+                <button onclick="updateChart('Ontem')" class="chart-btn"
+                    style="padding: 0.25rem 0.5rem; font-size: 0.75rem; width: auto; background: var(--border-color); color: var(--text-main);">Ontem</button>
+                <button onclick="updateChart('7 Dias')" class="chart-btn"
+                    style="padding: 0.25rem 0.5rem; font-size: 0.75rem; width: auto; background: var(--border-color); color: var(--text-main);">7d</button>
+                <button onclick="updateChart('30 Dias')" class="chart-btn"
+                    style="padding: 0.25rem 0.5rem; font-size: 0.75rem; width: auto; background: var(--border-color); color: var(--text-main);">30d</button>
+            </div>
+        </div>
+        <canvas id="salesChart"></canvas>
+        <div id="chartDataContainer" data-labels-today="<%= chartLabelsToday %>"
+            data-points-today="<%= chartDataToday %>" data-labels-yesterday="<%= chartLabelsYesterday %>"
+            data-points-yesterday="<%= chartDataYesterday %>" data-labels-7d="<%= chartLabels %>"
+            data-points-7d="<%= chartData %>" data-labels-30d="<%= chartLabels30d %>"
+            data-points-30d="<%= chartData30d %>" style="display: none;"></div>
+    </div>
+    </div>
+    <script>
+        const ctx = document.getElementById('salesChart').getContext('2d');
+        const container = document.getElementById('chartDataContainer');
+
+        // Parse the data attributes string safely into arrays
+        const labelsToday = JSON.parse(container.getAttribute('data-labels-today') || "[]");
+        const dataPointsToday = JSON.parse(container.getAttribute('data-points-today') || "[]");
+        const labelsYesterday = JSON.parse(container.getAttribute('data-labels-yesterday') || "[]");
+        const dataPointsYesterday = JSON.parse(container.getAttribute('data-points-yesterday') || "[]");
+        const labels7d = JSON.parse(container.getAttribute('data-labels-7d') || "[]");
+        const dataPoints7d = JSON.parse(container.getAttribute('data-points-7d') || "[]");
+        const labels30d = JSON.parse(container.getAttribute('data-labels-30d') || "[]");
+        const dataPoints30d = JSON.parse(container.getAttribute('data-points-30d') || "[]");
+
+        let salesChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labelsToday,
+                datasets: [{
+                    label: 'Receita (MT)',
+                    data: dataPointsToday,
+                    borderColor: 'rgb(21, 128, 61)',
+                    backgroundColor: 'rgba(21, 128, 61, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        function updateChart(label) {
+            document.getElementById('currentChartLabel').innerText = label;
+
+            // Update button styles
+            const buttons = document.querySelectorAll('.chart-btn');
+            buttons.forEach(btn => {
+                if ((label === 'Hoje' && btn.innerText.includes('Hoje')) ||
+                    (label === 'Ontem' && btn.innerText.includes('Ontem')) ||
+                    (label === '7 Dias' && btn.innerText.includes('7d')) ||
+                    (label === '30 Dias' && btn.innerText.includes('30d'))) {
+                    btn.style.background = 'var(--primary-color)';
+                    btn.style.color = '#fff';
+                } else {
+                    btn.style.background = 'var(--border-color)';
+                    btn.style.color = 'var(--text-main)';
+                }
+            });
+
+            if (label === 'Hoje') {
+                salesChart.data.labels = labelsToday;
+                salesChart.data.datasets[0].data = dataPointsToday;
+            } else if (label === 'Ontem') {
+                salesChart.data.labels = labelsYesterday;
+                salesChart.data.datasets[0].data = dataPointsYesterday;
+            } else if (label === '7 Dias') {
+                salesChart.data.labels = labels7d;
+                salesChart.data.datasets[0].data = dataPoints7d;
+            } else if (label === '30 Dias') {
+                salesChart.data.labels = labels30d;
+                salesChart.data.datasets[0].data = dataPoints30d;
+            }
+            salesChart.update();
+        }
+    </script>
+</body>
+
+</html>

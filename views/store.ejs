@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MozLoja - Produtos Disponíveis</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .store-header {
+            text-align: center;
+            padding: 4rem 1rem;
+            background: linear-gradient(135deg, var(--primary-color) 0%, #a855f7 100%);
+            color: white;
+            margin-bottom: 3rem;
+            border-bottom-left-radius: 2rem;
+            border-bottom-right-radius: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .store-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .store-header p {
+            font-size: 1.125rem;
+            opacity: 0.9;
+        }
+
+        .store-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            padding-bottom: 4rem;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .public-product-card {
+            background: #fff;
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .public-product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .public-product-card img {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+        }
+
+        .public-product-info {
+            padding: 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .public-product-info h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.25rem;
+            color: var(--text-main);
+        }
+
+        .public-product-info p.desc {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+            flex: 1;
+        }
+
+        .buy-action {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .buy-action .price {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin: 0;
+        }
+
+        .btn-buy {
+            background: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn-buy:hover {
+            background: var(--primary-hover);
+        }
+    </style>
+</head>
+
+<body style="background-color: var(--bg-color);">
+    <div class="store-header">
+        <h1>Bem-vindo à MOZCOMPRAS</h1>
+        <p>Os melhores infoprodutos e cursos para alavancar sua carreira na MOZCOMPRAS</p>
+    </div>
+
+    <div class="store-container">
+        <div class="product-grid">
+            <% if (products && products.length> 0) { %>
+                <% products.forEach(product=> { %>
+                    <div class="public-product-card">
+                        <img src="<%= product.image %>" alt="<%= product.name %>">
+                        <div class="public-product-info">
+                            <h3>
+                                <%= product.name %>
+                            </h3>
+                            <p class="desc">
+                                <%= product.description %>
+                            </p>
+                            <div class="buy-action">
+                                <span class="price">
+                                    <%= product.price %> MT
+                                </span>
+                                <a href="/checkout/init/<%= product.id %>" class="btn-buy">Comprar Agora</a>
+                            </div>
+                        </div>
+                    </div>
+                    <% }) %>
+                        <% } else { %>
+                            <p>Nenhum produto disponível no momento.</p>
+                            <% } %>
+        </div>
+    </div>
+</body>
+
+</html>

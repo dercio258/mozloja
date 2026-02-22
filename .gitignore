@@ -1,0 +1,7 @@
+node_modules/ 
+# Arquivos de ambiente (segredos) 
+.env 
+.env.local 
+.env.* 
+# Logs logs/ 
+*.log npm-debug.log*
