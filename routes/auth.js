@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const User = require('../models/User');
 
 // Login pages
 router.get('/login-user_one', (req, res) => {
@@ -11,23 +12,41 @@ router.get('/login-user_two', (req, res) => {
 });
 
 // Auth logic
-router.post('/login-user_one', (req, res) => {
+router.post('/login-user_one', async (req, res) => {
     const { email, password } = req.body;
-    if (email === process.env.USER_ONE_EMAIL && password === process.env.USER_ONE_PASS) {
-        // Set session or cookie in real app. Redirecting to dashboard for now.
-        res.redirect('/dashboard?user=one');
-    } else {
-        res.render('login_user_one', { error: 'Invalid credentials' });
+    try {
+        const user = await User.findOne({ where: { email, password } }); // In a real app, use hashed passwords
+        if (user) {
+            req.session.userId = user.id;
+            res.redirect('/dashboard');
+        } else {
+            res.render('login_user_one', { error: 'Credenciais inválidas' });
+        }
+    } catch (err) {
+        console.error(err);
+        res.render('login_user_one', { error: 'Erro no servidor' });
     }
 });
 
-router.post('/login-user_two', (req, res) => {
+router.post('/login-user_two', async (req, res) => {
     const { email, password } = req.body;
-    if (email === process.env.USER_TWO_EMAIL && password === process.env.USER_TWO_PASS) {
-        res.redirect('/dashboard?user=two');
-    } else {
-        res.render('login_user_two', { error: 'Invalid credentials' });
+    try {
+        const user = await User.findOne({ where: { email, password } });
+        if (user) {
+            req.session.userId = user.id;
+            res.redirect('/dashboard');
+        } else {
+            res.render('login_user_two', { error: 'Credenciais inválidas' });
+        }
+    } catch (err) {
+        console.error(err);
+        res.render('login_user_two', { error: 'Erro no servidor' });
     }
+});
+
+router.get('/logout', (req, res) => {
+    req.session.destroy();
+    res.redirect('/auth/login-user_one');
 });
 
 module.exports = router;

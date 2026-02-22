@@ -76,14 +76,17 @@ router.post('/process', async (req, res) => {
         }
 
         if (result.success) {
+            const saleId = `SALE-${Date.now()}`;
             await Sale.create({
-                id: `SALE-${Date.now()}`,
+                id: saleId,
                 product: productDetails ? productDetails.name : 'Venda Avulsa',
                 customer: name || 'Cliente Anónimo',
                 email: email || null,
                 phone: phone || null,
                 amount: parseFloat(amount),
-                status: 'Concluído'
+                status: 'Concluído',
+                vendedor_id: productDetails ? productDetails.vendedor_id : null,
+                productId: productDetails ? productDetails.id : null
             });
 
             // Mark checkout session as used only on success
@@ -96,7 +99,7 @@ router.post('/process', async (req, res) => {
                 // UTMify Notification
                 try {
                     await utmifyService.enviarVenda(
-                        { id: `SALE-${Date.now()}`, amount: parseFloat(amount) },
+                        { id: saleId, amount: parseFloat(amount) },
                         productDetails,
                         { name, email, phone },
                         req.query // Pass UTM params from query if available
@@ -111,7 +114,7 @@ router.post('/process', async (req, res) => {
                         await axios.post(productDetails.webhook_url, {
                             event: 'order.paid',
                             data: {
-                                id: `SALE-${Date.now()}`,
+                                id: saleId,
                                 product: productDetails.name,
                                 customer: name,
                                 email: email,
@@ -127,16 +130,19 @@ router.post('/process', async (req, res) => {
                 }
             }
 
-            return res.json({ success: true, redirect: '/thank-you' });
+            return res.json({ success: true, redirect: `/thank-you/${saleId}` });
         } else {
+            const saleId = `SALE-${Date.now()}`;
             await Sale.create({
-                id: `SALE-${Date.now()}`,
+                id: saleId,
                 product: productDetails ? productDetails.name : 'Venda Avulsa',
                 customer: name || 'Cliente Anónimo',
                 email: email || null,
                 phone: phone || null,
                 amount: parseFloat(amount),
-                status: 'Falhado'
+                status: 'Falhado',
+                vendedor_id: productDetails ? productDetails.vendedor_id : null,
+                productId: productDetails ? productDetails.id : null
             });
 
             return res.json({ success: false, error: (result.error || 'Erro desconhecido') });

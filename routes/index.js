@@ -5,19 +5,29 @@ const Sale = require('../models/Sale');
 const Withdrawal = require('../models/Withdrawal');
 const CheckoutSession = require('../models/CheckoutSession');
 const crypto = require('crypto');
+const { isAuthenticated } = require('../middleware/auth');
 
 router.get('/', (req, res) => {
     const subdomainMap = {
         'dercio': 'login_user_one',
         'rafael': 'login_user_two',
         'home': 'index',
-        'obrigado': 'thank_you'
+        'obrigado': 'thank_you',
+        'pay': 'store' // User with 'pay' subdomain goes to store/home
     };
 
     const host = req.hostname || '';
     const subdomain = Object.keys(subdomainMap).find(s => host.startsWith(`${s}.`));
 
-    res.render(subdomain ? subdomainMap[subdomain] : 'index');
+    if (subdomain === 'dercio' || subdomain === 'rafael') {
+        return res.render(subdomainMap[subdomain], { error: null });
+    }
+
+    // Default or other subdomains
+    res.render(subdomain ? subdomainMap[subdomain] : 'index', {
+        products: [], // For store if needed
+        baseUrl: process.env.developmentenviroment === 'production' ? process.env.PRODUCTION_URL : `http://localhost:${process.env.PORT || 3000}`
+    });
 });
 
 // Robust checkout initialization
@@ -78,7 +88,7 @@ router.get('/loja', async (req, res) => {
         const allProducts = [...mockProducts];
 
         const baseUrl = process.env.developmentenviroment === 'production'
-            ? process.env.PRODUCTION_URL
+            ? 'https://pay.mozcompras.store'
             : `http://localhost:${process.env.PORT || 3000}`;
 
         res.render('store', { products: allProducts, baseUrl });
@@ -88,10 +98,10 @@ router.get('/loja', async (req, res) => {
     }
 });
 
-router.get('/dashboard', async (req, res) => {
+router.get('/dashboard', isAuthenticated, async (req, res) => {
     try {
-        const sales = await Sale.findAll();
-        const withdrawals = await Withdrawal.findAll();
+        const sales = await Sale.findAll({ where: { vendedor_id: req.user.id } });
+        const withdrawals = await Withdrawal.findAll({ where: { vendedor_id: req.user.id } });
 
         let totalRevenue = 0;
         let revenueToday = 0;
@@ -161,11 +171,7 @@ router.get('/dashboard', async (req, res) => {
                     }
                 }
                 if (saleTime >= thirtyDaysAgo) {
-                    if (saleTime < sevenDaysAgo) revenue30d += sale.amount; // already added from above if sevenDaysAgo, wait! The logic above decoupled it.
-                    // Wait, let's keep revenue30d simple total
-                }
-                if (saleTime >= thirtyDaysAgo) {
-                    revenue30d += sale.amount; // Recalculating correctly (including today, yesterday, 7d)
+                    revenue30d += sale.amount;
                     const dateStr = `${saleDate.getDate()}/${saleDate.getMonth() + 1}`;
                     if (last30DaysMap[dateStr] !== undefined) {
                         last30DaysMap[dateStr] += sale.amount;
@@ -177,17 +183,6 @@ router.get('/dashboard', async (req, res) => {
             } else {
                 countFailed++;
             }
-        });
-
-        // revenue30d previously calculated in independent if block, now we fix double-counting issue 
-        // by just summing directly:
-        revenue30d = 0;
-        revenue7d = 0;
-        sales.forEach(sale => {
-            if (sale.status !== 'Concluído' || !sale.createdAt) return;
-            const saleTime = startOfDate(new Date(sale.createdAt));
-            if (saleTime >= thirtyDaysAgo) revenue30d += sale.amount;
-            if (saleTime >= sevenDaysAgo) revenue7d += sale.amount;
         });
 
         withdrawals.forEach(wd => {
@@ -221,11 +216,11 @@ router.get('/dashboard', async (req, res) => {
     }
 });
 
-router.get('/products', async (req, res) => {
+router.get('/products', isAuthenticated, async (req, res) => {
     try {
-        const products = await Product.findAll();
+        const products = await Product.findAll({ where: { vendedor_id: req.user.id } });
         const baseUrl = process.env.developmentenviroment === 'production'
-            ? process.env.PRODUCTION_URL
+            ? 'https://pay.mozcompras.store'
             : `http://localhost:${process.env.PORT || 3000}`;
         res.render('products', { products, baseUrl });
     } catch (err) {
@@ -234,11 +229,11 @@ router.get('/products', async (req, res) => {
     }
 });
 
-router.get('/products/new', (req, res) => {
+router.get('/products/new', isAuthenticated, (req, res) => {
     res.render('create_product');
 });
 
-router.post('/products', async (req, res) => {
+router.post('/products', isAuthenticated, async (req, res) => {
     try {
         const { name, price, image, description, content_link, pixel_id, utmify_id, webhook_url } = req.body;
         await Product.create({
@@ -249,7 +244,8 @@ router.post('/products', async (req, res) => {
             content_link,
             pixel_id: pixel_id || null,
             utmify_id: utmify_id || null,
-            webhook_url: webhook_url || null
+            webhook_url: webhook_url || null,
+            vendedor_id: req.user.id
         });
         res.redirect('/products');
     } catch (err) {
@@ -258,7 +254,7 @@ router.post('/products', async (req, res) => {
     }
 });
 
-router.post('/products/update-integrations/:productId', async (req, res) => {
+router.post('/products/update-integrations/:productId', isAuthenticated, async (req, res) => {
     try {
         const { productId } = req.params;
         const { pixel_id, utmify_id, webhook_url } = req.body;
@@ -268,7 +264,7 @@ router.post('/products/update-integrations/:productId', async (req, res) => {
             utmify_id: utmify_id || null,
             webhook_url: webhook_url || null
         }, {
-            where: { id: productId }
+            where: { id: productId, vendedor_id: req.user.id }
         });
 
         res.redirect('/products');
@@ -278,9 +274,12 @@ router.post('/products/update-integrations/:productId', async (req, res) => {
     }
 });
 
-router.get('/sales', async (req, res) => {
+router.get('/sales', isAuthenticated, async (req, res) => {
     try {
-        const sales = await Sale.findAll({ order: [['createdAt', 'DESC']] });
+        const sales = await Sale.findAll({
+            where: { vendedor_id: req.user.id },
+            order: [['createdAt', 'DESC']]
+        });
         res.render('sales', { sales });
     } catch (err) {
         console.error(err);
@@ -288,8 +287,54 @@ router.get('/sales', async (req, res) => {
     }
 });
 
-router.get('/thank-you', (req, res) => {
-    res.render('thank_you');
+router.get('/thank-you/:saleId', async (req, res) => {
+    try {
+        const { saleId } = req.params;
+        const sale = await Sale.findByPk(saleId);
+
+        if (!sale) {
+            return res.redirect('/thank-you-generic'); // Fallback if sale not found
+        }
+
+        let productLink = '#';
+        let productName = sale.product;
+
+        if (sale.productId) {
+            // Check if mock product
+            const mockLinks = {
+                '101': 'https://mega.nz/file/mock-curso-mkt',
+                '102': 'https://mega.nz/file/mock-mentoria',
+                '103': 'https://mega.nz/file/mock-ebook'
+            };
+
+            if (mockLinks[sale.productId]) {
+                productLink = mockLinks[sale.productId];
+            } else {
+                const product = await Product.findByPk(sale.productId);
+                if (product) {
+                    productLink = product.content_link;
+                    productName = product.name;
+                }
+            }
+        }
+
+        res.render('thank_you', { productName, productLink });
+    } catch (err) {
+        console.error(err);
+        res.render('thank_you', { productName: 'Produto', productLink: '#' });
+    }
+});
+
+router.post('/support/send', (req, res) => {
+    try {
+        const { name, email, message } = req.body;
+        console.log(`[Support Request] From: ${name} (${email}) - Message: ${message}`);
+        // In a real app, send an email here
+        res.json({ success: true, message: 'Sua mensagem foi enviada com sucesso!' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, error: 'Erro ao enviar mensagem.' });
+    }
 });
 
 module.exports = router;

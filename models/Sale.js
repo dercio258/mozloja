@@ -29,6 +29,14 @@ const Sale = sequelize.define('Sale', {
     status: {
         type: DataTypes.STRING,
         allowNull: false
+    },
+    vendedor_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    productId: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     }
 }, {
     tableName: 'sales',

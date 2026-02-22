@@ -12,13 +12,90 @@
 <body>
     <div class="container" style="text-align: center; padding: 50px;">
         <h1 style="color: var(--success-color);">Obrigado pela sua compra!</h1>
-        <p>Seu pedido foi processado com sucesso.</p>
-        <p>Você receberá um e-mail com os detalhes do produto em breve.</p>
-        <div style="margin-top: 30px;">
-            <a href="/loja" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">Voltar
-                para a loja</a>
+        <p style="font-size: 1.2rem; margin: 20px 0;">
+            Parabéns! Você adquiriu <strong>
+                <%= productName %>
+            </strong>.
+        </p>
+        <p>Clica em <strong>Abrir</strong> para acederes ao teu produto.</p>
+
+        <div style="margin-top: 40px;">
+            <% if (productLink && productLink !=='#' ) { %>
+                <a href="<%= productLink %>" target="_blank" class="btn"
+                    style="padding: 15px 40px; font-size: 1.2rem; background: var(--success-color); border: none; border-radius: 8px; color: white; text-decoration: none; display: inline-block;">
+                    Abrir Conteúdo
+                </a>
+                <% } else { %>
+                    <p style="color: var(--text-muted);">O link de acesso será enviado para o seu e-mail.</p>
+                    <% } %>
+        </div>
+
+        <div
+            style="margin-top: 50px; padding: 30px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; max-width: 600px; margin-left: auto; margin-right: auto; text-align: left;">
+            <h3 style="margin-top: 0; color: var(--text-main);">Precisa de ajuda?</h3>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
+                Caso tenha qualquer dificuldade, contacte-nos através do email:
+                <a href="mailto:mozcompras8@gmail.com"
+                    style="color: var(--primary-color); font-weight: 600;">mozcompras8@gmail.com</a>
+                ou preencha o formulário abaixo:
+            </p>
+
+            <form id="supportForm" style="display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; gap: 1rem;">
+                    <input type="text" name="name" placeholder="Teu Nome" required
+                        style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    <input type="email" name="email" placeholder="Teu Email" required
+                        style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                </div>
+                <textarea name="message" placeholder="Descreva o seu problema..." required
+                    style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; height: 100px; resize: vertical;"></textarea>
+                <button type="submit"
+                    style="background: var(--primary-color); color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    Enviar Problema
+                </button>
+            </form>
+            <div id="supportResponse" style="margin-top: 15px; font-size: 0.9rem; display: none;"></div>
+        </div>
+
+        <div style="margin-top: 50px;">
+            <a href="/loja" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">Voltar para a
+                loja</a>
         </div>
     </div>
+
+    <script>
+        document.getElementById('supportForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const responseDiv = document.getElementById('supportResponse');
+
+            const formData = {
+                name: form.name.value,
+                email: form.email.value,
+                message: form.message.value
+            };
+
+            try {
+                const response = await fetch('/support/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                responseDiv.innerText = result.message || result.error;
+                responseDiv.style.color = result.success ? 'var(--success-color)' : 'var(--error-color)';
+                responseDiv.style.display = 'block';
+
+                if (result.success) form.reset();
+            } catch (err) {
+                responseDiv.innerText = 'Ocorreu um erro ao enviar.';
+                responseDiv.style.color = 'var(--error-color)';
+                responseDiv.style.display = 'block';
+            }
+        });
+    </script>
 </body>
 
 </html>

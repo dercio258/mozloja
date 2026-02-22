@@ -21,6 +21,10 @@ const Withdrawal = sequelize.define('Withdrawal', {
     ref: {
         type: DataTypes.STRING,
         allowNull: true
+    },
+    vendedor_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     }
 }, {
     tableName: 'withdrawals',

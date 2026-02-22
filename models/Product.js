@@ -38,6 +38,10 @@ const Product = sequelize.define('Product', {
     webhook_url: {
         type: DataTypes.STRING,
         allowNull: true
+    },
+    vendedor_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     }
 }, {
     tableName: 'products',

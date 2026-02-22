@@ -38,6 +38,14 @@ const authRoutes = require('./routes/auth');
 const checkoutRoutes = require('./routes/checkout');
 const saqueRoutes = require('./routes/saque');
 
+const session = require('express-session');
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'gfg_secret_key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false } // Set to true if using https
+}));
+
 app.use('/', indexRoutes);
 app.use('/auth', authRoutes);
 app.use('/', checkoutRoutes);
@@ -45,13 +53,38 @@ app.use('/saque', saqueRoutes);
 
 const sequelize = require('./config/database');
 // Import models to ensure they are registered with Sequelize before sync
+require('./models/User');
 require('./models/Product');
 require('./models/Sale');
 require('./models/Withdrawal');
 require('./models/CheckoutSession');
 
-sequelize.sync({ alter: true }).then(() => {
+sequelize.sync({ alter: true }).then(async () => {
     console.log('Database synchronized successfully.');
+
+    // Create initial users from .env if they don't exist
+    const User = require('./models/User');
+    if (process.env.USER_ONE_EMAIL) {
+        await User.findOrCreate({
+            where: { email: process.env.USER_ONE_EMAIL },
+            defaults: {
+                name: 'User One',
+                password: process.env.USER_ONE_PASS || '123456',
+                role: 'vendor'
+            }
+        });
+    }
+    if (process.env.USER_TWO_EMAIL) {
+        await User.findOrCreate({
+            where: { email: process.env.USER_TWO_EMAIL },
+            defaults: {
+                name: 'User Two',
+                password: process.env.USER_TWO_PASS || '123456',
+                role: 'vendor'
+            }
+        });
+    }
+
     app.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
     });
