@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const bcrypt = require('bcrypt');
 
 // Login pages
 router.get('/login-user_one', (req, res) => {
@@ -15,8 +16,8 @@ router.get('/login-user_two', (req, res) => {
 router.post('/login-user_one', async (req, res) => {
     const { email, password } = req.body;
     try {
-        const user = await User.findOne({ where: { email, password } }); // In a real app, use hashed passwords
-        if (user) {
+        const user = await User.findOne({ where: { email } });
+        if (user && await bcrypt.compare(password, user.password)) {
             req.session.userId = user.id;
             // In local/dev, just /dashboard. In prod, use subdomain.
             const domain = process.env.DOMAIN || 'mozcompras.store';
@@ -37,8 +38,8 @@ router.post('/login-user_one', async (req, res) => {
 router.post('/login-user_two', async (req, res) => {
     const { email, password } = req.body;
     try {
-        const user = await User.findOne({ where: { email, password } });
-        if (user) {
+        const user = await User.findOne({ where: { email } });
+        if (user && await bcrypt.compare(password, user.password)) {
             req.session.userId = user.id;
             const domain = process.env.DOMAIN || 'mozcompras.store';
             const isProd = process.env.developmentenviroment === 'production';

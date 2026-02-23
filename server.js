@@ -64,25 +64,31 @@ sequelize.sync({ alter: true }).then(async () => {
 
     // Create initial users from .env if they don't exist
     const User = require('./models/User');
-    if (process.env.USER_ONE_EMAIL) {
-        await User.findOrCreate({
-            where: { email: process.env.USER_ONE_EMAIL },
-            defaults: {
-                name: 'User One',
-                password: process.env.USER_ONE_PASS || '123456',
-                role: 'vendor'
+    const usersToCreate = [
+        { email: process.env.USER_ONE_EMAIL, name: 'User One', pass: process.env.USER_ONE_PASS || '123456' },
+        { email: process.env.USER_TWO_EMAIL, name: 'User Two', pass: process.env.USER_TWO_PASS || '123456' }
+    ];
+
+    for (const u of usersToCreate) {
+        if (u.email) {
+            const [user, created] = await User.findOrCreate({
+                where: { email: u.email },
+                defaults: {
+                    name: u.name,
+                    password: u.pass,
+                    role: 'vendor'
+                }
+            });
+
+            // If the user existed but we just implemented hashing, 
+            // the old password in DB is plain text. 
+            // Let's force an update if it doesn't look like a hash (bcrypt hashes start with $2b$ or $2a$)
+            if (!created && !user.password.startsWith('$2')) {
+                console.log(`Updating password for ${u.email} to use hashing...`);
+                user.password = u.pass;
+                await user.save(); // This will trigger the beforeUpdate hook
             }
-        });
-    }
-    if (process.env.USER_TWO_EMAIL) {
-        await User.findOrCreate({
-            where: { email: process.env.USER_TWO_EMAIL },
-            defaults: {
-                name: 'User Two',
-                password: process.env.USER_TWO_PASS || '123456',
-                role: 'vendor'
-            }
-        });
+        }
     }
 
     app.listen(PORT, () => {
