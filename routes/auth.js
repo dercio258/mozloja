@@ -14,7 +14,9 @@ router.get('/login-user_two', (req, res) => {
 
 // Auth logic
 router.post('/login-user_one', async (req, res) => {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+    email = email ? email.trim() : '';
+    password = password ? password.trim() : '';
     console.log(`[Auth] Attempt login for: ${email} (Route: login-user_one)`);
     try {
         const user = await User.findOne({ where: { email } });
@@ -49,7 +51,9 @@ router.post('/login-user_one', async (req, res) => {
 });
 
 router.post('/login-user_two', async (req, res) => {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+    email = email ? email.trim() : '';
+    password = password ? password.trim() : '';
     console.log(`[Auth] Attempt login for: ${email} (Route: login-user_two)`);
     try {
         const user = await User.findOne({ where: { email } });
