@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 const User = sequelize.define('User', {
     id: {
@@ -36,7 +36,9 @@ const User = sequelize.define('User', {
             }
         },
         beforeUpdate: async (user) => {
-            if (user.changed('password')) {
+            // Hash if password is changed OR if it's currently plain text
+            const isPlain = !user.password.startsWith('$2');
+            if (user.changed('password') || isPlain) {
                 const salt = await bcrypt.genSalt(10);
                 user.password = await bcrypt.hash(user.password, salt);
             }
