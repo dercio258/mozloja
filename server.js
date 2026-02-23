@@ -80,13 +80,19 @@ sequelize.sync({ alter: true }).then(async () => {
                 }
             });
 
-            // If the user existed but we just implemented hashing, 
-            // the old password in DB is plain text. 
-            // Let's force an update if it doesn't look like a hash (bcrypt hashes start with $2b$ or $2a$)
-            if (!created && !user.password.startsWith('$2')) {
-                console.log(`Updating password for ${u.email} to use hashing...`);
-                user.password = u.pass;
-                await user.save(); // This will trigger the beforeUpdate hook
+            // If the user already existed, verify if the password matches the .env value
+            // This handles cases where .env was changed or initial hashing was skipped
+            if (!created) {
+                const bcrypt = require('bcrypt');
+                const isMatch = await bcrypt.compare(u.pass, user.password);
+
+                if (!isMatch) {
+                    console.log(`[Server] Password mismatch for ${u.email}. Updating DB to match .env and re-hashing...`);
+                    user.password = u.pass;
+                    await user.save(); // This triggers beforeUpdate hook in User model
+                }
+            } else {
+                console.log(`[Server] Created initial user: ${u.email}`);
             }
         }
     }
