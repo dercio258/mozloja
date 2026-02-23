@@ -71,28 +71,36 @@ sequelize.sync({ alter: true }).then(async () => {
 
     for (const u of usersToCreate) {
         if (u.email) {
+            const cleanEmail = u.email.trim();
+            const cleanPass = u.pass.trim();
+
             const [user, created] = await User.findOrCreate({
-                where: { email: u.email },
+                where: { email: cleanEmail },
                 defaults: {
                     name: u.name,
-                    password: u.pass,
+                    password: cleanPass,
                     role: 'vendor'
                 }
             });
 
-            // If the user already existed, verify if the password matches the .env value
-            // This handles cases where .env was changed or initial hashing was skipped
-            if (!created) {
+            if (created) {
+                console.log(`[Server] Created initial user: ${cleanEmail}`);
+            } else {
                 const bcrypt = require('bcrypt');
-                const isMatch = await bcrypt.compare(u.pass, user.password);
+                const isMatch = await bcrypt.compare(cleanPass, user.password);
+
+                console.log(`[Server] Sync check for ${cleanEmail}: Match=${isMatch}, PassLen=${cleanPass.length}, HashStarts=${user.password.substring(0, 4)}`);
 
                 if (!isMatch) {
-                    console.log(`[Server] Password mismatch for ${u.email}. Updating DB to match .env and re-hashing...`);
-                    user.password = u.pass;
-                    await user.save(); // This triggers beforeUpdate hook in User model
+                    console.log(`[Server] Password mismatch for ${cleanEmail}. Updating DB to match .env and re-hashing...`);
+                    user.password = cleanPass;
+                    await user.save();
+
+                    // Verify again after save
+                    const updatedUser = await User.findByPk(user.id);
+                    const nowMatches = await bcrypt.compare(cleanPass, updatedUser.password);
+                    console.log(`[Server] Post-update match for ${cleanEmail}: ${nowMatches}`);
                 }
-            } else {
-                console.log(`[Server] Created initial user: ${u.email}`);
             }
         }
     }
