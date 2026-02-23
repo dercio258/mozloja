@@ -34,8 +34,6 @@ const enforceSubdomains = (req, res, next) => {
 
     // Subdomain to Path mapping (for URL rewriting)
     const subToPath = {
-        'dercio': '/auth/login-user_one',
-        'rafael': '/auth/login-user_two',
         'loja': '/loja',
         'pay': '/c',
         'mydashboard': '/dashboard',
@@ -48,8 +46,6 @@ const enforceSubdomains = (req, res, next) => {
 
     // Path to Subdomain mapping (for Enforcement)
     const pathToSub = {
-        '/auth/login-user_one': 'dercio',
-        '/auth/login-user_two': 'rafael',
         '/loja': 'loja',
         '/dashboard': 'mydashboard',
         '/sales': 'myvendas',

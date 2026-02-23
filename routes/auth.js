@@ -18,6 +18,12 @@ router.post('/login-user_one', async (req, res) => {
         const user = await User.findOne({ where: { email, password } }); // In a real app, use hashed passwords
         if (user) {
             req.session.userId = user.id;
+            // In local/dev, just /dashboard. In prod, use subdomain.
+            const domain = process.env.DOMAIN || 'mozcompras.store';
+            const isProd = process.env.developmentenviroment === 'production';
+            if (isProd) {
+                return res.redirect(`https://mydashboard.${domain}/`);
+            }
             res.redirect('/dashboard');
         } else {
             res.render('login_user_one', { error: 'Credenciais inválidas' });
@@ -34,6 +40,11 @@ router.post('/login-user_two', async (req, res) => {
         const user = await User.findOne({ where: { email, password } });
         if (user) {
             req.session.userId = user.id;
+            const domain = process.env.DOMAIN || 'mozcompras.store';
+            const isProd = process.env.developmentenviroment === 'production';
+            if (isProd) {
+                return res.redirect(`https://mydashboard.${domain}/`);
+            }
             res.redirect('/dashboard');
         } else {
             res.render('login_user_two', { error: 'Credenciais inválidas' });
