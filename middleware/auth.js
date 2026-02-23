@@ -19,7 +19,7 @@ const isAuthenticated = async (req, res, next) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    res.redirect('/auth/login-user_one'); // Redirecting to one of the login pages by default
+    res.redirect('/auth/access/login'); // Redirecting to the discrete login page
 };
 
 module.exports = { isAuthenticated };
