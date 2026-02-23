@@ -8,14 +8,16 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware (Static Assets first)
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Subdomain Enforcement Middleware
 const { enforceSubdomains } = require('./middleware/subdomain');
 app.use(enforceSubdomains);
 
-// Middleware
+// Other Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
 // View Engine
 app.set('view engine', 'ejs');
