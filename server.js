@@ -47,11 +47,18 @@ app.use((req, res, next) => {
 });
 
 // Session Configuration
+const isProd = process.env.developmentenviroment === 'production';
+const domain = process.env.DOMAIN || 'mozcompras.store';
+
 app.use(session({
     secret: process.env.SESSION_SECRET || 'gfg_secret_key',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false } // Set to true if using https
+    cookie: {
+        secure: isProd, // Set to true if using https
+        domain: isProd ? `.${domain}` : undefined, // Share cookie across subdomains in prod
+        maxAge: 1000 * 60 * 60 * 24 // 24 hours
+    }
 }));
 
 // Routes
