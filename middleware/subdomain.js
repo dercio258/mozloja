@@ -31,7 +31,7 @@ const enforceSubdomains = (req, res, next) => {
     const hasSubdomain = host.split('.').length > 2;
 
     // 0. Global Paths: Redirect back to main domain if on a subdomain
-    const globalPaths = ['/auth', '/support'];
+    const globalPaths = ['/auth', '/support', '/new_user'];
     const isGlobal = globalPaths.some(p => path.startsWith(p));
 
     if (hasSubdomain && isGlobal) {

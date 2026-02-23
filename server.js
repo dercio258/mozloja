@@ -6,6 +6,7 @@ const session = require('express-session');
 const { enforceSubdomains } = require('./middleware/subdomain');
 const indexRoutes = require('./routes/index');
 const authRoutes = require('./routes/auth');
+const registerRoutes = require('./routes/register');
 const checkoutRoutes = require('./routes/checkout');
 const saqueRoutes = require('./routes/saque');
 const sequelize = require('./config/database');
@@ -56,6 +57,7 @@ app.use(session({
 // Routes
 app.use('/', indexRoutes);
 app.use('/auth', authRoutes);
+app.use('/new_user', registerRoutes);
 app.use('/', checkoutRoutes);
 app.use('/saque', saqueRoutes);
 
