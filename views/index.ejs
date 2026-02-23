@@ -171,8 +171,9 @@
     <nav>
         <div class="logo">MOZCOMPRAS</div>
         <div class="nav-links">
-            <a href="/loja" class="nav-btn">Ver Loja</a>
-            <button class="nav-btn" id="openLogin">Login</button>
+            <a href="<%= url('loja') %>" class="nav-btn">Ver Loja</a>
+            <a href="<%= url('dercio') %>" class="nav-btn">Login Dercio</a>
+            <a href="<%= url('rafael') %>" class="nav-btn">Login Rafael</a>
             <button class="nav-btn btn-primary" id="openRegister">Registar</button>
         </div>
     </nav>
@@ -181,7 +182,7 @@
         <h1>Transforme seu conhecimento em<br>lucro com a MOZCOMPRAS</h1>
         <p>A plataforma mais completa para vender e comprar infoprodutos em Moçambique.</p>
         <div style="display: flex; gap: 1rem; justify-content: center;">
-            <a href="/loja" class="cta-button">ACEDER À LOJA</a>
+            <a href="<%= url('loja') %>" class="cta-button">ACEDER À LOJA</a>
             <button class="cta-button"
                 style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.4);"
                 onclick="document.getElementById('registerModal').style.display = 'flex'">QUERO VENDER</button>

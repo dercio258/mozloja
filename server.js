@@ -8,6 +8,10 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Subdomain Enforcement Middleware
+const { enforceSubdomains } = require('./middleware/subdomain');
+app.use(enforceSubdomains);
+
 // Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());

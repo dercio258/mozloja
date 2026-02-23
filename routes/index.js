@@ -8,25 +8,14 @@ const crypto = require('crypto');
 const { isAuthenticated } = require('../middleware/auth');
 
 router.get('/', (req, res) => {
-    const subdomainMap = {
-        'dercio': 'login_user_one',
-        'rafael': 'login_user_two',
-        'home': 'index',
-        'obrigado': 'thank_you',
-        'pay': 'store' // User with 'pay' subdomain goes to store/home
-    };
+    const domain = process.env.DOMAIN || 'mozcompras.store';
+    const baseUrl = process.env.developmentenviroment === 'production'
+        ? `https://${domain}`
+        : `http://localhost:${process.env.PORT || 3000}`;
 
-    const host = req.hostname || '';
-    const subdomain = Object.keys(subdomainMap).find(s => host.startsWith(`${s}.`));
-
-    if (subdomain === 'dercio' || subdomain === 'rafael') {
-        return res.render(subdomainMap[subdomain], { error: null });
-    }
-
-    // Default or other subdomains
-    res.render(subdomain ? subdomainMap[subdomain] : 'index', {
-        products: [], // For store if needed
-        baseUrl: process.env.developmentenviroment === 'production' ? process.env.PRODUCTION_URL : `http://localhost:${process.env.PORT || 3000}`
+    res.render('index', {
+        products: [],
+        baseUrl
     });
 });
 
@@ -220,7 +209,7 @@ router.get('/products', isAuthenticated, async (req, res) => {
     try {
         const products = await Product.findAll({ where: { vendedor_id: req.user.id } });
         const baseUrl = process.env.developmentenviroment === 'production'
-            ? 'https://pay.mozcompras.store'
+            ? 'https://loja.mozcompras.store'
             : `http://localhost:${process.env.PORT || 3000}`;
         res.render('products', { products, baseUrl });
     } catch (err) {

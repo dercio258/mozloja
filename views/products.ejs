@@ -25,11 +25,12 @@
     <nav>
         <div class="logo">MOZCOMPRAS</div>
         <div class="nav-links">
-            <a href="/dashboard">Dashboard</a>
-            <a href="/sales">Vendas</a>
-            <a href="/products">Produtos</a>
-            <a href="/products/new">Cadastrar Produto</a>
-            <a href="/integrations">Integrações</a>
+            <a href="<%= url('mydashboard') %>">Dashboard</a>
+            <a href="<%= url('myvendas') %>">Vendas</a>
+            <a href="<%= url('myproduto') %>">Produtos</a>
+            <a href="<%= url('mysaques') %>">Saques</a>
+            <a href="<%= url('mycriarproduto') %>">Cadastrar Produto</a>
+            <a href="<%= url('myintegrations') %>">Integrações</a>
             <a href="/auth/logout">Sair</a>
         </div>
     </nav>
@@ -68,7 +69,7 @@
                                 </span>
                             </div>
                             <button class="btn-update"
-                                onclick="openIntegrationModal('<%= product.id %>', '<%= product.pixel_id || '' %>', '<%= product.utmify_id || '' %>', '<%= product.webhook_url || '' %>')">
+                                onclick="openIntegrationModal('<%= product.id %>', '<%= product.pixel_id %>', '<%= product.utmify_id %>', '<%= product.webhook_url %>')">
                                 Configurar Integrações
                             </button>
                         </div>
