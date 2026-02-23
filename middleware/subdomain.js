@@ -18,6 +18,17 @@ const enforceSubdomains = (req, res, next) => {
     const host = req.hostname.toLowerCase();
     const path = req.path;
 
+    // Skip middleware for static assets
+    const isStatic = path.startsWith('/css/') ||
+        path.startsWith('/js/') ||
+        path.startsWith('/images/') ||
+        path.includes('.pixel.js') ||
+        path === '/favicon.ico';
+
+    console.log(`[Subdomain Middleware] Host: ${host}, Path: ${path}, isStatic: ${isStatic}, isProd: ${isProd}`);
+
+    if (isStatic) return next();
+
     const currentSub = host.split('.')[0];
     const hasSubdomain = host.split('.').length > 2;
 
