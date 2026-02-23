@@ -2,6 +2,20 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const dotenv = require('dotenv');
+const session = require('express-session');
+const { enforceSubdomains } = require('./middleware/subdomain');
+const indexRoutes = require('./routes/index');
+const authRoutes = require('./routes/auth');
+const checkoutRoutes = require('./routes/checkout');
+const saqueRoutes = require('./routes/saque');
+const sequelize = require('./config/database');
+
+// Import models to ensure they are registered with Sequelize
+require('./models/User');
+require('./models/Product');
+require('./models/Sale');
+require('./models/Withdrawal');
+require('./models/CheckoutSession');
 
 dotenv.config();
 
@@ -12,7 +26,6 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Subdomain Enforcement Middleware
-const { enforceSubdomains } = require('./middleware/subdomain');
 app.use(enforceSubdomains);
 
 // Other Middleware
@@ -25,26 +38,14 @@ app.set('views', path.join(__dirname, 'views'));
 
 // Global Middleware for Scripts (Pixel/Utmify)
 app.use((req, res, next) => {
-    // In a real app, these might come from a DB or file. 
-    // Here we mock them or load from a simple JSON if implemented.
-    // For now, passing empty strings or env vars.
     res.locals.pixelId = process.env.PIXEL_ID || '';
     res.locals.utmifyId = process.env.UTMIFY_ID || '';
-
-    // Gatilhos globais de vendas
     res.locals.gatilhoTimer = process.env.GATILHO_TIMER === 'true';
     res.locals.gatilhoDesconto = process.env.GATILHO_DESCONTO || 'off';
-
     next();
 });
 
-// Routes
-const indexRoutes = require('./routes/index');
-const authRoutes = require('./routes/auth');
-const checkoutRoutes = require('./routes/checkout');
-const saqueRoutes = require('./routes/saque');
-
-const session = require('express-session');
+// Session Configuration
 app.use(session({
     secret: process.env.SESSION_SECRET || 'gfg_secret_key',
     resave: false,
@@ -52,18 +53,11 @@ app.use(session({
     cookie: { secure: false } // Set to true if using https
 }));
 
+// Routes
 app.use('/', indexRoutes);
 app.use('/auth', authRoutes);
 app.use('/', checkoutRoutes);
 app.use('/saque', saqueRoutes);
-
-const sequelize = require('./config/database');
-// Import models to ensure they are registered with Sequelize before sync
-require('./models/User');
-require('./models/Product');
-require('./models/Sale');
-require('./models/Withdrawal');
-require('./models/CheckoutSession');
 
 sequelize.sync({ alter: true }).then(async () => {
     console.log('Database synchronized successfully.');
