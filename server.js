@@ -95,20 +95,21 @@ sequelize.sync({ alter: true }).then(async () => {
             if (created) {
                 console.log(`[Server] Created initial user: ${cleanEmail}`);
             } else {
-                const bcrypt = require('bcrypt');
+                const bcrypt = require('bcryptjs');
                 const isMatch = await bcrypt.compare(cleanPass, user.password);
+                const isHashed = user.password.startsWith('$2');
 
-                console.log(`[Server] Sync check for ${cleanEmail}: Match=${isMatch}, PassLen=${cleanPass.length}, HashStarts=${user.password.substring(0, 4)}`);
+                console.log(`[Server] Sync check for ${cleanEmail}: Match=${isMatch}, IsHashed=${isHashed}`);
 
-                if (!isMatch) {
-                    console.log(`[Server] Password mismatch for ${cleanEmail}. Updating DB to match .env and re-hashing...`);
+                if (!isMatch || !isHashed) {
+                    console.log(`[Server] Mismatch or plain text detected for ${cleanEmail}. Updating and re-hashing...`);
                     user.password = cleanPass;
-                    await user.save();
+                    await user.save(); // Triggers beforeUpdate hook with isPlain logic
 
-                    // Verify again after save
+                    // Double check
                     const updatedUser = await User.findByPk(user.id);
                     const nowMatches = await bcrypt.compare(cleanPass, updatedUser.password);
-                    console.log(`[Server] Post-update match for ${cleanEmail}: ${nowMatches}`);
+                    console.log(`[Server] Post-update status for ${cleanEmail}: Match=${nowMatches}, Hashed=${updatedUser.password.startsWith('$2')}`);
                 }
             }
         }
