@@ -8,16 +8,8 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Request Logger
-app.use((req, res, next) => {
-    console.log(`[Server] ${req.method} ${req.url} (Host: ${req.hostname})`);
-    next();
-});
-
 // Middleware (Static Assets first)
-const publicPath = path.join(__dirname, 'public');
-console.log(`[Server] Serving static assets from: ${publicPath}`);
-app.use(express.static(publicPath));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Subdomain Enforcement Middleware
 const { enforceSubdomains } = require('./middleware/subdomain');

@@ -25,12 +25,19 @@ const enforceSubdomains = (req, res, next) => {
         path.includes('.pixel.js') ||
         path === '/favicon.ico';
 
-    console.log(`[Subdomain Middleware] Host: ${host}, Path: ${path}, isStatic: ${isStatic}, isProd: ${isProd}`);
-
     if (isStatic) return next();
 
     const currentSub = host.split('.')[0];
     const hasSubdomain = host.split('.').length > 2;
+
+    // 0. Global Paths: Redirect back to main domain if on a subdomain
+    const globalPaths = ['/auth', '/support'];
+    const isGlobal = globalPaths.some(p => path.startsWith(p));
+
+    if (hasSubdomain && isGlobal) {
+        const query = req.url.split('?')[1] ? '?' + req.url.split('?')[1] : '';
+        return res.redirect(`https://${domain}${path}${query}`);
+    }
 
     // Subdomain to Path mapping (for URL rewriting)
     const subToPath = {
