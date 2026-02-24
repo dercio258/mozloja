@@ -23,6 +23,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy for production sessions behind Nginx/PM2
+app.set('trust proxy', 1);
+
 // Middleware (Static Assets first)
 app.use(express.static(path.join(__dirname, 'public')));
 

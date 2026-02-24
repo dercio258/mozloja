@@ -9,9 +9,12 @@ const isAuthenticated = async (req, res, next) => {
                 res.locals.user = user; // Make user available to EJS templates
                 return next();
             }
+            console.log(`[Auth Middleware] User not found for ID: ${req.session.userId}`);
         } catch (err) {
-            console.error('Auth middleware error:', err);
+            console.error('[Auth Middleware] Database error:', err);
         }
+    } else {
+        console.log(`[Auth Middleware] No session or userId found. Session: ${!!req.session}, UserID: ${req.session?.userId}`);
     }
 
     // Check if it's an AJAX request or if redirection is needed
