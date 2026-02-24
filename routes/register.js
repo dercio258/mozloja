@@ -10,6 +10,8 @@ router.get('/register', (req, res) => {
 
 // Register logic
 router.post('/register', async (req, res) => {
+    let { name, email, password } = req.body;
+
     // Normalization
     name = name ? name.trim() : '';
     email = email ? email.trim() : '';
@@ -37,7 +39,7 @@ router.post('/register', async (req, res) => {
         const domain = process.env.DOMAIN || 'mozcompras.store';
         const isProd = process.env.developmentenviroment === 'production';
         if (isProd) {
-            return res.redirect(`https://mydashboard.${domain}/`);
+            return res.redirect(`https://app.${domain}/`);
         }
         res.redirect('/dashboard');
     } catch (err) {
