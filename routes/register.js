@@ -10,18 +10,10 @@ router.get('/register', (req, res) => {
 
 // Register logic
 router.post('/register', async (req, res) => {
-    let { name, email, password, accessCode } = req.body;
-
     // Normalization
     name = name ? name.trim() : '';
     email = email ? email.trim() : '';
     password = password ? password.trim() : '';
-    accessCode = accessCode ? accessCode.trim() : '';
-
-    // Simple Secret Code Validation
-    if (accessCode !== '2025') {
-        return res.render('auth/register', { error: 'Código de acesso inválido.' });
-    }
 
     if (!name || !email || !password) {
         return res.render('auth/register', { error: 'Todos os campos são obrigatórios.' });

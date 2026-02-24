@@ -43,22 +43,22 @@ const enforceSubdomains = (req, res, next) => {
     const subToPath = {
         'loja': '/loja',
         'pay': '/c',
-        'mydashboard': '/dashboard',
-        'myvendas': '/sales',
-        'myproduto': '/products',
-        'mysaques': '/saque',
-        'mycriarproduto': '/products/new',
+        'app': '/dashboard',
+        'vendas': '/sales',
+        'produtos': '/products',
+        'financeiro': '/saque',
+        'novo-produto': '/products/new',
         'obrigado': '/thank-you'
     };
 
     // Path to Subdomain mapping (for Enforcement)
     const pathToSub = {
         '/loja': 'loja',
-        '/dashboard': 'mydashboard',
-        '/sales': 'myvendas',
-        '/products': 'myproduto',
-        '/saque': 'mysaques',
-        '/products/new': 'mycriarproduto'
+        '/dashboard': 'app',
+        '/sales': 'vendas',
+        '/products': 'produtos',
+        '/saque': 'financeiro',
+        '/products/new': 'novo-produto'
     };
 
     // Special cases for enforcement

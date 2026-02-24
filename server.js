@@ -71,50 +71,6 @@ app.use('/saque', saqueRoutes);
 sequelize.sync({ alter: true }).then(async () => {
     console.log('Database synchronized successfully.');
 
-    // Create initial users from .env if they don't exist
-    const User = require('./models/User');
-    const usersToCreate = [
-        { email: process.env.USER_ONE_EMAIL, name: 'User One', pass: process.env.USER_ONE_PASS || '123456' },
-        { email: process.env.USER_TWO_EMAIL, name: 'User Two', pass: process.env.USER_TWO_PASS || '123456' }
-    ];
-
-    for (const u of usersToCreate) {
-        if (u.email) {
-            const cleanEmail = u.email.trim();
-            const cleanPass = u.pass.trim();
-
-            const [user, created] = await User.findOrCreate({
-                where: { email: cleanEmail },
-                defaults: {
-                    name: u.name,
-                    password: cleanPass,
-                    role: 'vendor'
-                }
-            });
-
-            if (created) {
-                console.log(`[Server] Created initial user: ${cleanEmail}`);
-            } else {
-                const bcrypt = require('bcryptjs');
-                const isMatch = await bcrypt.compare(cleanPass, user.password);
-                const isHashed = user.password.startsWith('$2');
-
-                console.log(`[Server] Sync check for ${cleanEmail}: Match=${isMatch}, IsHashed=${isHashed}`);
-
-                if (!isMatch || !isHashed) {
-                    console.log(`[Server] Mismatch or plain text detected for ${cleanEmail}. Updating and re-hashing...`);
-                    user.password = cleanPass;
-                    await user.save(); // Triggers beforeUpdate hook with isPlain logic
-
-                    // Double check
-                    const updatedUser = await User.findByPk(user.id);
-                    const nowMatches = await bcrypt.compare(cleanPass, updatedUser.password);
-                    console.log(`[Server] Post-update status for ${cleanEmail}: Match=${nowMatches}, Hashed=${updatedUser.password.startsWith('$2')}`);
-                }
-            }
-        }
-    }
-
     app.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
     });

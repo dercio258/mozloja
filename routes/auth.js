@@ -10,20 +10,11 @@ router.get('/access/login', (req, res) => {
 
 // Login logic
 router.post('/access/login', async (req, res) => {
-    let { email, password, accessCode } = req.body;
-
     // Normalization
     email = email ? email.trim() : '';
     password = password ? password.trim() : '';
-    accessCode = accessCode ? accessCode.trim() : '';
 
     console.log(`[Auth] Unified login attempt for: ${email}`);
-
-    // Secret Code Validation
-    if (accessCode !== '2025') {
-        console.log(`[Auth] Invalid access code attempt: ${accessCode}`);
-        return res.render('auth/login', { error: 'Código de acesso inválido.' });
-    }
 
     try {
         const user = await User.findOne({ where: { email } });
@@ -41,7 +32,7 @@ router.post('/access/login', async (req, res) => {
             const isProd = process.env.developmentenviroment === 'production';
 
             if (isProd) {
-                const redirectUrl = `https://mydashboard.${domain}/`;
+                const redirectUrl = `https://app.${domain}/`;
                 console.log(`[Auth] Redirecting to production dashboard: ${redirectUrl}`);
                 return res.redirect(redirectUrl);
             }

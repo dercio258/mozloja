@@ -209,7 +209,7 @@ router.get('/products', isAuthenticated, async (req, res) => {
     try {
         const products = await Product.findAll({ where: { vendedor_id: req.user.id } });
         const baseUrl = process.env.developmentenviroment === 'production'
-            ? 'https://loja.mozcompras.store'
+            ? 'https://produtos.mozcompras.store'
             : `http://localhost:${process.env.PORT || 3000}`;
         res.render('products', { products, baseUrl });
     } catch (err) {
