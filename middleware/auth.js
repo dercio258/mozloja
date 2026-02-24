@@ -19,11 +19,9 @@ const isAuthenticated = async (req, res, next) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const domain = process.env.DOMAIN || 'mozcompras.store';
-    const isProd = process.env.developmentenviroment === 'production';
-    const loginUrl = isProd ? `https://${domain}/auth/access/login` : '/auth/access/login';
+    const loginUrl = '/auth/access/login';
 
-    res.redirect(loginUrl); // Redirecting to the discrete login page on main domain
+    res.redirect(loginUrl); // Redirecting to the discrete login page
 };
 
 module.exports = { isAuthenticated };

@@ -10,7 +10,7 @@ const { isAuthenticated } = require('../middleware/auth');
 router.get('/', (req, res) => {
     const domain = process.env.DOMAIN || 'mozcompras.store';
     const baseUrl = process.env.developmentenviroment === 'production'
-        ? `https://${domain}`
+        ? '/'
         : `http://localhost:${process.env.PORT || 3000}`;
 
     res.render('index', {
@@ -77,7 +77,7 @@ router.get('/loja', async (req, res) => {
         const allProducts = [...mockProducts];
 
         const baseUrl = process.env.developmentenviroment === 'production'
-            ? 'https://pay.mozcompras.store'
+            ? '/pay'
             : `http://localhost:${process.env.PORT || 3000}`;
 
         res.render('store', { products: allProducts, baseUrl });
@@ -209,7 +209,7 @@ router.get('/products', isAuthenticated, async (req, res) => {
     try {
         const products = await Product.findAll({ where: { vendedor_id: req.user.id } });
         const baseUrl = process.env.developmentenviroment === 'production'
-            ? 'https://produtos.mozcompras.store'
+            ? '/produtos'
             : `http://localhost:${process.env.PORT || 3000}`;
         res.render('products', { products, baseUrl });
     } catch (err) {

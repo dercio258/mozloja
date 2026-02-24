@@ -39,7 +39,7 @@ router.post('/register', async (req, res) => {
         const domain = process.env.DOMAIN || 'mozcompras.store';
         const isProd = process.env.developmentenviroment === 'production';
         if (isProd) {
-            return res.redirect(`https://app.${domain}/`);
+            return res.redirect('/dashboard');
         }
         res.redirect('/dashboard');
     } catch (err) {

@@ -34,9 +34,7 @@ router.post('/access/login', async (req, res) => {
             const isProd = process.env.developmentenviroment === 'production';
 
             if (isProd) {
-                const redirectUrl = `https://app.${domain}/`;
-                console.log(`[Auth] Redirecting to production dashboard: ${redirectUrl}`);
-                return res.redirect(redirectUrl);
+                return res.redirect('/dashboard');
             }
 
             console.log(`[Auth] Redirecting to local dashboard: /dashboard`);

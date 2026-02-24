@@ -56,7 +56,6 @@ app.use(session({
     saveUninitialized: false,
     cookie: {
         secure: isProd, // Set to true if using https
-        domain: isProd ? `.${domain}` : undefined, // Share cookie across subdomains in prod
         maxAge: 1000 * 60 * 60 * 24 // 24 hours
     }
 }));
