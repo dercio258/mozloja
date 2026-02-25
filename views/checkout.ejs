@@ -606,20 +606,42 @@
                             const result = await response.json();
 
                             if (result.success) {
-                                // Trigger Purchase event manually for Pixel if pixelId exists
-                                if (window.pixelId && window.fbq) {
-                                    window.fbq('track', 'Purchase', {
-                                        value: parseFloat(data.amount),
-                                        currency: 'MZN',
-                                        content_name: window.productName,
-                                        content_ids: [window.productId]
-                                    });
-                                }
+                                // Trigger Original Initiation analytics if needed
+                                console.log('Payment initiated, starting poll for sale:', result.saleId);
 
-                                showModalState('success');
-                                setTimeout(() => {
-                                    window.location.href = result.redirect;
-                                }, 2000);
+                                // Start Polling
+                                const pollInterval = setInterval(async () => {
+                                    try {
+                                        const statusRes = await fetch(`/sale-status/${result.saleId}`);
+                                        const statusData = await statusRes.json();
+
+                                        if (statusData.status === 'Concluído') {
+                                            clearInterval(pollInterval);
+
+                                            // Analytics Purchase
+                                            if (window.pixelId && window.fbq) {
+                                                window.fbq('track', 'Purchase', {
+                                                    value: parseFloat(data.amount),
+                                                    currency: 'MZN',
+                                                    content_name: window.productName,
+                                                    content_ids: [window.productId]
+                                                });
+                                            }
+
+                                            showModalState('success');
+                                            setTimeout(() => {
+                                                window.location.href = result.redirect;
+                                            }, 2000);
+                                        } else if (statusData.status === 'Falhado') {
+                                            clearInterval(pollInterval);
+                                            showModalState('error', 'O pagamento foi recusado ou falhou.');
+                                        }
+                                        // If still Pendente, keep waiting...
+                                    } catch (pollErr) {
+                                        console.error('Polling error:', pollErr);
+                                    }
+                                }, 3000); // Poll every 3 seconds
+
                             } else {
                                 showModalState('error', result.error);
                             }

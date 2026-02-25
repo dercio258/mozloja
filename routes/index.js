@@ -307,7 +307,11 @@ router.get('/thank-you/:saleId', async (req, res) => {
             }
         }
 
-        res.render('thank_you', { productName, productLink });
+        res.render('thank_you', {
+            productName,
+            productLink,
+            status: req.query.status
+        });
     } catch (err) {
         console.error(err);
         res.render('thank_you', { productName: 'Produto', productLink: '#' });
@@ -323,6 +327,20 @@ router.post('/support/send', (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ success: false, error: 'Erro ao enviar mensagem.' });
+    }
+});
+
+router.get('/sale-status/:saleId', async (req, res) => {
+    try {
+        const { saleId } = req.params;
+        const sale = await Sale.findByPk(saleId);
+        if (!sale) {
+            return res.status(404).json({ error: 'Venda não encontrada' });
+        }
+        res.json({ status: sale.status });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro interno ao consultar status' });
     }
 });
 

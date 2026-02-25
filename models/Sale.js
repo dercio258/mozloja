@@ -37,6 +37,10 @@ const Sale = sequelize.define('Sale', {
     productId: {
         type: DataTypes.INTEGER,
         allowNull: true
+    },
+    external_reference: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 }, {
     tableName: 'sales',

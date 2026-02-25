@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const registerRoutes = require('./routes/register');
 const checkoutRoutes = require('./routes/checkout');
 const saqueRoutes = require('./routes/saque');
+const webhookRoutes = require('./routes/webhooks');
 const sequelize = require('./config/database');
 
 // Import models to ensure they are registered with Sequelize
@@ -69,6 +70,7 @@ app.use('/auth', authRoutes);
 app.use('/new_user', registerRoutes);
 app.use('/', checkoutRoutes);
 app.use('/saque', saqueRoutes);
+app.use('/webhooks', webhookRoutes);
 
 sequelize.sync({ alter: true }).then(async () => {
     console.log('Database synchronized successfully.');

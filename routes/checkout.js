@@ -61,8 +61,13 @@ router.post('/process', async (req, res) => {
     try {
         const { amount, phone, provider, name, email, productId, sessionToken } = req.body;
 
+        // Construct callback URL dynamically
+        const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
+        const host = req.get('host');
+        const callbackUrl = `${protocol}://${host}/webhooks/debito`;
+
         // Call payment service
-        const result = await paymentService.processPayment(provider, phone, amount);
+        const result = await paymentService.processPayment(provider, phone, amount, callbackUrl);
 
         let productDetails = null;
         if (productId == '101') {
@@ -77,6 +82,11 @@ router.post('/process', async (req, res) => {
 
         if (result.success) {
             const saleId = `SALE-${Date.now()}`;
+            // The result.data from paymentService is response.data from axios.
+            // Based on common RatixPay/Debito response, it should have a reference or transaction_id.
+            // If it's a STK Push initiation, it returns success:true when the request is accepted.
+            const externalRef = result.data.reference || result.data.transaction_id || result.data.id;
+
             await Sale.create({
                 id: saleId,
                 product: productDetails ? productDetails.name : 'Venda Avulsa',
@@ -84,9 +94,10 @@ router.post('/process', async (req, res) => {
                 email: email || null,
                 phone: phone || null,
                 amount: parseFloat(amount),
-                status: 'Concluído',
+                status: 'Pendente',
                 vendedor_id: productDetails ? productDetails.vendedor_id : null,
-                productId: productDetails ? productDetails.id : null
+                productId: productDetails ? productDetails.id : null,
+                external_reference: externalRef
             });
 
             // Mark checkout session as used only on success
@@ -94,43 +105,12 @@ router.post('/process', async (req, res) => {
                 await CheckoutSession.update({ used: true }, { where: { token: sessionToken } });
             }
 
-            // --- TRACKING & INTEGRATIONS ---
-            if (productDetails && productDetails.id) {
-                // UTMify Notification
-                try {
-                    await utmifyService.enviarVenda(
-                        { id: saleId, amount: parseFloat(amount) },
-                        productDetails,
-                        { name, email, phone },
-                        req.query // Pass UTM params from query if available
-                    );
-                } catch (utmErr) {
-                    console.error('UTMify Notification Error:', utmErr.message);
-                }
-
-                // Webhook Notification
-                if (productDetails.webhook_url) {
-                    try {
-                        await axios.post(productDetails.webhook_url, {
-                            event: 'order.paid',
-                            data: {
-                                id: saleId,
-                                product: productDetails.name,
-                                customer: name,
-                                email: email,
-                                phone: phone,
-                                amount: parseFloat(amount),
-                                status: 'paid'
-                            }
-                        }, { timeout: 5000 });
-                        console.log('✅ Webhook sent to:', productDetails.webhook_url);
-                    } catch (webhookErr) {
-                        console.error('❌ Webhook error:', webhookErr.message);
-                    }
-                }
-            }
-
-            return res.json({ success: true, redirect: `/thank-you/${saleId}` });
+            return res.json({
+                success: true,
+                saleId: saleId,
+                message: 'Pedido enviado! Confirme no seu telemóvel introduzindo o PIN.',
+                redirect: `/thank-you/${saleId}`
+            });
         } else {
             const saleId = `SALE-${Date.now()}`;
             await Sale.create({

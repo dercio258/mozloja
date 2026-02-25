@@ -31,7 +31,7 @@ const paymentService = {
     },
 
     // 1. Pagamento C2B (Cliente -> Negócio)
-    async processPayment(provider, phone, amount) {
+    async processPayment(provider, phone, amount, callbackUrl = null) {
         const walletId = this.getWalletId(provider);
         console.log(`Initiating ${provider} C2B payment for ${phone} amount ${amount} on wallet ${walletId}`);
 
@@ -41,7 +41,8 @@ const paymentService = {
                 msisdn: phone,
                 amount: parseFloat(amount),
                 reference_description: `Pagamento via ${provider}`,
-                internal_notes: `Venda iniciada pelo checkout. Lite Project.`
+                internal_notes: `Venda iniciada pelo checkout. Lite Project.`,
+                callback_url: callbackUrl
             };
 
             const response = await axios.post(url, payload, { headers: this.getAuthHeaders() });
