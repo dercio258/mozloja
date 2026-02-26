@@ -6,7 +6,52 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MOZCOMPRAS - Obrigado</title>
     <link rel="stylesheet" href="/css/styles.css">
+
+    <!-- Tracking Configuration -->
+    <div id="pixel-config" data-product-id="<%= locals.productId || '' %>"
+        data-product-name="<%= locals.productName || '' %>" data-pixel-id="<%= locals.pixelId || '' %>"
+        data-utmify-id="<%= locals.utmifyId || '' %>" data-amount="<%= locals.amount || '' %>" style="display: none;">
+    </div>
+
+    <script>
+        (function () {
+            const config = document.getElementById('pixel-config');
+            if (config) {
+                const pixId = config.dataset.pixelId;
+                const utmId = config.dataset.utmifyId;
+
+                if (pixId) {
+                    localStorage.setItem('currentPixelId', pixId);
+
+                    // Store in a format meta-pixel-unified.js might prefer
+                    const configObj = {
+                        pixelId: pixId,
+                        produtoId: config.dataset.productId,
+                        produtoNome: config.dataset.productName,
+                        eventos: ['PageView', 'Purchase'],
+                        ativo: true
+                    };
+                    localStorage.setItem('metaPixelConfig', JSON.stringify(configObj));
+                }
+
+                if (utmId) {
+                    let integracoes = [];
+                    try { integracoes = JSON.parse(localStorage.getItem('umtfyIntegracoes') || '[]'); } catch (e) { }
+                    if (!integracoes.find(i => i.apiKey === utmId)) {
+                        integracoes.push({
+                            apiKey: utmId,
+                            produtoId: config.dataset.productId,
+                            produtoNome: config.dataset.productName
+                        });
+                        localStorage.setItem('umtfyIntegracoes', JSON.stringify(integracoes));
+                    }
+                }
+            }
+        })();
+    </script>
+
     <script src="/js/meta-pixel-unified.js" async></script>
+    <script src="/js/umtfy-dynamic.js" async></script>
 </head>
 
 <body>

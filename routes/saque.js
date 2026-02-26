@@ -59,31 +59,34 @@ router.post('/process', async (req, res) => {
         const result = await paymentService.processWithdrawal(provider, phone, withdrawAmount);
 
         if (result.success) {
-            const ref = result.data.debito_reference || 'Sem Ref';
+            // Usar o ID retornado pela API para rastreamento robusto
+            const ref = result.transaction_id || result.data?.id || (result.data && result.data.debito_reference) || 'Sem Ref';
+
             await Withdrawal.create({
                 id: `WD-${Date.now()}`,
                 method: provider,
                 amount: withdrawAmount,
-                status: 'Concluído',
-                ref: ref
+                status: 'Concluído', // Saque B2C geralmente é imediato na API de Debito
+                ref: ref.toString()
             });
 
-            // Refetch to update UI accurately
             const updated = await getBalanceAndHistory();
 
             res.render('saque', {
                 balance: updated.balance,
                 withdrawals: updated.withdrawals,
-                success: `Saque de ${withdrawAmount} MT via ${provider} solicitado com sucesso! Ref: ${ref}`,
+                success: `Saque de ${withdrawAmount} MT via ${provider} realizado com sucesso! Ref: ${ref}`,
                 error: null
             });
         } else {
+            const errorMsg = result.message || result.error || 'Falha desconhecida na API';
+
             await Withdrawal.create({
                 id: `WD-${Date.now()}`,
                 method: provider,
                 amount: withdrawAmount,
                 status: 'Falhado',
-                ref: 'Transação Inválida/Negada'
+                ref: 'Erro: ' + errorMsg.substring(0, 50)
             });
 
             const updated = await getBalanceAndHistory();
@@ -91,7 +94,7 @@ router.post('/process', async (req, res) => {
             res.render('saque', {
                 balance: updated.balance,
                 withdrawals: updated.withdrawals,
-                error: `Falha no saque: ${result.error}`,
+                error: `Falha no saque: ${errorMsg}`,
                 success: null
             });
         }

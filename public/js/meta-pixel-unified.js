@@ -34,8 +34,6 @@ if (typeof window.MetaPixelUnifiedClass !== 'undefined') {
 
                 // Verificar se estamos na página payment-success e adicionar retry se necessário
                 const isPaymentSuccess = window.location.pathname.includes('payment-success') ||
-                    window.location.pathname.includes('thank-you') ||
-                    window.location.pathname.includes('obrigado') ||
                     window.location.href.includes('payment-success');
 
                 // Carregar integrações
@@ -79,8 +77,6 @@ if (typeof window.MetaPixelUnifiedClass !== 'undefined') {
                 console.error('❌ Erro ao inicializar Meta Pixel:', error);
                 // Em payment-success, tentar novamente após erro
                 const isPaymentSuccess = window.location.pathname.includes('payment-success') ||
-                    window.location.pathname.includes('thank-you') ||
-                    window.location.pathname.includes('obrigado') ||
                     window.location.href.includes('payment-success');
                 if (isPaymentSuccess) {
                     console.log('🔄 Tentando reinicializar após erro em payment-success...');
@@ -105,27 +101,7 @@ if (typeof window.MetaPixelUnifiedClass !== 'undefined') {
         async loadIntegrations() {
             try {
                 // Verificar se estamos na página de payment-success
-                const isPaymentSuccess = window.location.pathname.includes('payment-success') ||
-                    window.location.pathname.includes('thank-you') ||
-                    window.location.pathname.includes('obrigado') ||
-                    window.location.pathname.includes('payment/success');
-
-                // Tentar carregar do DOM primeiro (preferência para dados já injetados pelo backend)
-                const domConfig = document.getElementById('pixel-config');
-                if (domConfig && domConfig.dataset.productId) {
-                    console.log('✅ Carregando configurações de pixel do DOM (#pixel-config)');
-                    this.integrations = [{
-                        pixelId: domConfig.dataset.pixelId,
-                        produtoId: domConfig.dataset.productId,
-                        produtoNome: domConfig.dataset.productName,
-                        eventos: ['PageView', 'InitiateCheckout', 'Purchase'], // Padrão seguro
-                        ativo: true
-                    }].filter(i => i.pixelId);
-
-                    if (this.integrations.length > 0) {
-                        return;
-                    }
-                }
+                const isPaymentSuccess = window.location.pathname.includes('payment-success');
 
                 // Verificar se há produto na URL - priorizar carregamento da API
                 const urlParams = new URLSearchParams(window.location.search);
@@ -133,7 +109,7 @@ if (typeof window.MetaPixelUnifiedClass !== 'undefined') {
 
                 // No payment-success, priorizar localStorage primeiro
                 if (isPaymentSuccess) {
-                    console.log('🔄 Página de sucesso detectada, carregando do localStorage primeiro...');
+                    console.log('🔄 Página de payment-success detectada, carregando do localStorage primeiro...');
                     await this.loadIntegrationsFromLocalStorage();
 
                     // Se conseguiu carregar do localStorage, não precisa da API
@@ -148,7 +124,7 @@ if (typeof window.MetaPixelUnifiedClass !== 'undefined') {
                 }
 
                 if (produtoId) {
-                    console.log('🔄 Produto detectado, carregando da API primeiro...');
+                    console.log('🔄 Produto detectado na URL, carregando da API primeiro...');
                     await this.loadIntegrationsFromAPI();
 
                     // Se conseguiu carregar da API, não precisa do localStorage
@@ -157,7 +133,7 @@ if (typeof window.MetaPixelUnifiedClass !== 'undefined') {
                         return;
                     }
 
-                    console.log('⚠️ Falha ao carregar da API ou endpoint não existente, tentando localStorage...');
+                    console.log('⚠️ Falha ao carregar da API, tentando localStorage...');
                 }
 
                 // Tentar múltiplas chaves para compatibilidade
@@ -512,7 +488,7 @@ if (typeof window.MetaPixelUnifiedClass !== 'undefined') {
                         !function (f, b, e, v, n, t, s) {
                             if (f.fbq) return; n = f.fbq = function () {
                                 n.callMethod ?
-                                    n.callMethod.apply(n, arguments) : n.queue.push(arguments)
+                                n.callMethod.apply(n, arguments) : n.queue.push(arguments)
                             };
                             if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = '2.0';
                             n.queue = []; t = b.createElement(e); t.async = !0;
@@ -733,7 +709,7 @@ if (typeof window.MetaPixelUnifiedClass !== 'undefined') {
 
                 // Na página de sucesso, tentar carregar novamente após um delay
                 // para dar tempo dos dados serem carregados
-                if (path.includes('payment-success') || path.includes('payment/success') || path.includes('thank-you') || path.includes('obrigado')) {
+                if (path.includes('payment-success') || path.includes('payment/success')) {
                     const urlParams = new URLSearchParams(window.location.search);
                     const productId = urlParams.get('productId') || urlParams.get('produto');
 
@@ -770,16 +746,16 @@ if (typeof window.MetaPixelUnifiedClass !== 'undefined') {
                 path.includes('/c/') ||
                 window.location.pathname.includes('checkout') ||
                 window.location.pathname.includes('/c/') ||
-                window.location.href.includes('checkout') ||
-                window.location.href.includes('/c/');
+                window.location.href.includes('checkout');
+
             // Detectar página de sucesso de pagamento
             const isPaymentSuccessPage = path.includes('payment-success') ||
                 path.includes('payment/success') ||
                 path.includes('sucesso') ||
                 path.includes('thank-you') ||
-                path.includes('obrigado') ||
                 window.location.href.includes('payment-success') ||
                 window.location.href.includes('payment/success') ||
+                window.location.href.includes('thank-you') ||
                 window.location.pathname.includes('payment-success') ||
                 window.location.pathname.includes('thank-you');
 
@@ -1269,7 +1245,7 @@ if (typeof window.MetaPixelUnifiedClass !== 'undefined') {
             // Apenas log de detecção - os eventos são disparados por dispatchConfiguredEventsForPath
             if (currentPath.includes('checkout') || currentPath.includes('/c/')) {
                 console.log('🛒 Página de checkout detectada - InitiateCheckout será disparado por dispatchConfiguredEventsForPath');
-            } else if (currentPath.includes('payment-success') || currentPath.includes('sucesso') || currentPath.includes('thank-you') || currentPath.includes('obrigado')) {
+            } else if (currentPath.includes('payment-success') || currentPath.includes('sucesso') || currentPath.includes('thank-you')) {
                 console.log('💰 Página de sucesso detectada - Purchase será disparado por dispatchConfiguredEventsForPath');
             } else {
                 console.log('ℹ️ Página não é checkout nem payment-success - nenhum evento será disparado');

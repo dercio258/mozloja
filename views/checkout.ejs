@@ -350,26 +350,73 @@
     <!-- Meta Pixel & Global Config -->
     <div id="pixel-config" data-product-id="<%= locals.product ? product.id : '' %>"
         data-product-name="<%= locals.product ? product.name : '' %>"
-        data-pixel-id="<%= locals.product ? (product.pixel_id || '') : '' %>" style="display: none;"></div>
+        data-pixel-id="<%= locals.product ? (product.pixel_id || '') : '' %>"
+        data-utmify-id="<%= locals.product ? (product.utmify_id || '') : '' %>" style="display: none;"></div>
 
     <script>
         (function () {
             const config = document.getElementById('pixel-config');
             if (config && config.dataset.productId) {
-                window.productId = config.dataset.productId;
-                window.productName = config.dataset.productName;
-                window.pixelId = config.dataset.pixelId;
+                const pId = config.dataset.productId;
+                const pName = config.dataset.productName;
+                const pixId = config.dataset.pixelId;
+                const utmId = config.dataset.utmifyId;
 
                 // Save to localStorage for meta-pixel-unified.js
-                if (window.pixelId) {
-                    localStorage.setItem('currentPixelId', window.pixelId);
-                    localStorage.setItem('currentProductId', window.productId);
-                    localStorage.setItem('currentProductName', window.productName);
+                if (pixId) {
+                    localStorage.setItem('currentPixelId', pixId);
+                    localStorage.setItem('currentProductId', pId);
+                    localStorage.setItem('currentProductName', pName);
+
+                    // Set default events including InitiateCheckout
+                    const evts = ['PageView', 'InitiateCheckout'];
+                    localStorage.setItem('currentPixelEvents', JSON.stringify(evts));
+
+                    // Store in a format meta-pixel-unified.js might prefer
+                    const configObj = {
+                        pixelId: pixId,
+                        produtoId: pId,
+                        produtoNome: pName,
+                        eventos: evts,
+                        ativo: true
+                    };
+                    localStorage.setItem('metaPixelConfig', JSON.stringify(configObj));
+
+                    // Logic to track InitiateCheckout immediately if fbq is ready
+                    // Otherwise meta-pixel-unified.js will pick it up from localStorage
+                    if (window.fbq) {
+                        fbq('track', 'InitiateCheckout', {
+                            content_name: pName,
+                            content_ids: [pId],
+                            content_type: 'product',
+                            value: parseFloat(config.parentElement.querySelector('input[name="amount"]')?.value || '0'),
+                            currency: 'MZN'
+                        });
+                    }
+                }
+
+                // Save to localStorage for umtfy-dynamic.js
+                if (utmId) {
+                    let integracoes = [];
+                    try {
+                        integracoes = JSON.parse(localStorage.getItem('umtfyIntegracoes') || '[]');
+                    } catch (e) { }
+
+                    // Avoid duplicates
+                    if (!integracoes.find(i => i.apiKey === utmId)) {
+                        integracoes.push({
+                            apiKey: utmId,
+                            produtoId: pId,
+                            produtoNome: pName
+                        });
+                        localStorage.setItem('umtfyIntegracoes', JSON.stringify(integracoes));
+                    }
                 }
             }
         })();
     </script>
     <script src="/js/meta-pixel-unified.js" async></script>
+    <script src="/js/umtfy-dynamic.js" async></script>
 </head>
 
 <body>
@@ -619,12 +666,14 @@
                                             clearInterval(pollInterval);
 
                                             // Analytics Purchase
-                                            if (window.pixelId && window.fbq) {
+                                            const config = document.getElementById('pixel-config');
+                                            const pixId = config ? config.dataset.pixelId : null;
+                                            if (pixId && window.fbq) {
                                                 window.fbq('track', 'Purchase', {
                                                     value: parseFloat(data.amount),
                                                     currency: 'MZN',
-                                                    content_name: window.productName,
-                                                    content_ids: [window.productId]
+                                                    content_name: config.dataset.productName,
+                                                    content_ids: [config.dataset.productId]
                                                 });
                                             }
 

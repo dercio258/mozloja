@@ -282,27 +282,32 @@ router.get('/thank-you/:saleId', async (req, res) => {
         const sale = await Sale.findByPk(saleId);
 
         if (!sale) {
-            return res.redirect('/thank-you-generic'); // Fallback if sale not found
+            return res.redirect('/');
         }
 
         let productLink = '#';
         let productName = sale.product;
+        let pixelId = null;
+        let utmifyId = null;
 
         if (sale.productId) {
-            // Check if mock product
-            const mockLinks = {
-                '101': 'https://mega.nz/file/mock-curso-mkt',
-                '102': 'https://mega.nz/file/mock-mentoria',
-                '103': 'https://mega.nz/file/mock-ebook'
+            const mockData = {
+                '101': { link: 'https://mega.nz/file/mock-curso-mkt', pixel: '11111111111', utmify: 'token-mock-1' },
+                '102': { link: 'https://mega.nz/file/mock-mentoria', pixel: '22222222222', utmify: 'token-mock-2' },
+                '103': { link: 'https://mega.nz/file/mock-ebook', pixel: '33333333333', utmify: 'token-mock-3' }
             };
 
-            if (mockLinks[sale.productId]) {
-                productLink = mockLinks[sale.productId];
+            if (mockData[sale.productId]) {
+                productLink = mockData[sale.productId].link;
+                pixelId = mockData[sale.productId].pixel;
+                utmifyId = mockData[sale.productId].utmify;
             } else {
                 const product = await Product.findByPk(sale.productId);
                 if (product) {
                     productLink = product.content_link;
                     productName = product.name;
+                    pixelId = product.pixel_id;
+                    utmifyId = product.utmify_id;
                 }
             }
         }
@@ -310,11 +315,22 @@ router.get('/thank-you/:saleId', async (req, res) => {
         res.render('thank_you', {
             productName,
             productLink,
-            status: req.query.status
+            status: req.query.status || sale.status,
+            amount: sale.amount,
+            productId: sale.productId,
+            pixelId,
+            utmifyId
         });
     } catch (err) {
         console.error(err);
-        res.render('thank_you', { productName: 'Produto', productLink: '#' });
+        res.render('thank_you', {
+            productName: 'Produto',
+            productLink: '#',
+            status: 'error',
+            amount: 0,
+            pixelId: null,
+            utmifyId: null
+        });
     }
 });
 

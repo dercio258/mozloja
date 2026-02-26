@@ -1,91 +1,100 @@
 const express = require('express');
 const router = express.Router();
-const paymentService = require('../services/paymentService');
 const Product = require('../models/Product');
 const Sale = require('../models/Sale');
 const CheckoutSession = require('../models/CheckoutSession');
-const utmifyService = require('../services/utmifyService');
-const axios = require('axios'); // For webhooks
-const { Op } = require('sequelize');
+const paymentService = require('../services/paymentService');
+const utmTracking = require('../utils/utmTracking');
 
-// Robust Endpoint
 router.get('/c/:token', async (req, res) => {
     try {
-        const token = req.params.token;
-        const session = await CheckoutSession.findOne({
-            where: {
-                token,
-                used: false
-            }
-        });
+        const { token } = req.params;
+        const session = await CheckoutSession.findOne({ where: { token, used: false } });
 
         if (!session) {
-            return res.status(403).send('Link de checkout inválido ou já utilizado.');
+            return res.status(404).render('error', { message: 'Sessão de checkout expirada ou não encontrada.' });
         }
 
-        // We NO LONGER mark as used here. 
-        // We only mark as used if the payment is successful in the POST route.
-        // We also removed the expiration check (Op.gt: new Date()) as per "seckout nunca deve expirar para usuario que nao tersminou o pagamento"
+        if (new Date() > session.expiresAt) {
+            return res.status(410).render('error', { message: 'Sessão de checkout expirada.' });
+        }
 
-        let product = null;
+        let product;
         if (session.isMock) {
-            // Mock products logic
-            if (session.productId == '101') {
-                product = { id: 101, name: 'Curso de Marketing Digital', price: 197.00, image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60' };
-            } else if (session.productId == '102') {
-                product = { id: 102, name: 'Mentoria Exclusiva de Vendas', price: 497.00, image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60' };
-            } else if (session.productId == '103') {
-                product = { id: 103, name: 'E-book: Segredos do Tráfego Pago', price: 250.00, image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60' };
-            }
+            const mockProducts = {
+                '101': {
+                    id: 101,
+                    name: 'Curso de Marketing Digital',
+                    price: 197.00,
+                    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+                    pixel_id: '11111111111',
+                    utmify_id: 'token-mock-1'
+                },
+                '102': {
+                    id: 102,
+                    name: 'Mentoria Exclusiva de Vendas',
+                    price: 497.00,
+                    image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+                    pixel_id: '22222222222',
+                    utmify_id: 'token-mock-2'
+                },
+                '103': {
+                    id: 103,
+                    name: 'E-book: Segredos do Tráfego Pago',
+                    price: 250.00,
+                    image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+                    pixel_id: '33333333333',
+                    utmify_id: 'token-mock-3'
+                }
+            };
+            product = mockProducts[session.productId];
         } else {
             product = await Product.findByPk(session.productId);
         }
 
         if (!product) {
-            return res.status(404).send('Produto não encontrado.');
+            return res.status(404).render('error', { message: 'Produto não encontrado.' });
         }
 
         res.render('checkout', {
-            amount: product.price,
             product: product,
-            sessionToken: token // Pass the token to be used in the POST form
+            sessionToken: token
         });
     } catch (err) {
-        console.error(err);
-        res.status(500).send('Erro interno ao carregar checkout.');
+        console.error('Checkout GET error:', err);
+        res.status(500).send('Erro interno ao carregar checkout');
     }
 });
-
 
 router.post('/process', async (req, res) => {
     try {
         const { amount, phone, provider, name, email, productId, sessionToken } = req.body;
 
-        // Construct callback URL dynamically
-        const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
-        const host = req.get('host');
-        const callbackUrl = `${protocol}://${host}/webhooks/debito`;
+        // Capture UTM parameters from request
+        const trackingParams = utmTracking.captureUTMParameters({
+            reqBody: req.body,
+            reqQuery: req.query,
+            ip: req.ip || req.get('x-forwarded-for') || req.connection.remoteAddress
+        });
 
-        // Call payment service
-        const result = await paymentService.processPayment(provider, phone, amount, callbackUrl);
+        // Call payment service with customer data
+        const result = await paymentService.processPayment(provider, phone, amount, null, { name, email, phone });
 
         let productDetails = null;
         if (productId == '101') {
-            productDetails = { name: 'Curso de Marketing Digital' };
+            productDetails = { id: 101, name: 'Curso de Marketing Digital' };
         } else if (productId == '102') {
-            productDetails = { name: 'Mentoria Exclusiva de Vendas' };
+            productDetails = { id: 102, name: 'Mentoria Exclusiva de Vendas' };
         } else if (productId == '103') {
-            productDetails = { name: 'E-book: Segredos do Tráfego Pago' };
+            productDetails = { id: 103, name: 'E-book: Segredos do Tráfego Pago' };
         } else if (productId) {
             productDetails = await Product.findByPk(productId);
         }
 
         if (result.success) {
             const saleId = `SALE-${Date.now()}`;
-            // The result.data from paymentService is response.data from axios.
-            // Based on common RatixPay/Debito response, it should have a reference or transaction_id.
-            // If it's a STK Push initiation, it returns success:true when the request is accepted.
-            const externalRef = result.data.reference || result.data.transaction_id || result.data.id;
+            // Use transaction_id or fallback to reference from data
+            const externalRef = result.transaction_id || result.data?.id || result.data?.reference;
 
             await Sale.create({
                 id: saleId,
@@ -96,11 +105,11 @@ router.post('/process', async (req, res) => {
                 amount: parseFloat(amount),
                 status: 'Pendente',
                 vendedor_id: productDetails ? productDetails.vendedor_id : null,
-                productId: productDetails ? productDetails.id : null,
-                external_reference: externalRef
+                productId: productDetails ? (productDetails.id || productId) : null,
+                external_reference: externalRef ? externalRef.toString() : null
             });
 
-            // Mark checkout session as used only on success
+            // Mark session as used
             if (sessionToken) {
                 await CheckoutSession.update({ used: true }, { where: { token: sessionToken } });
             }
@@ -108,24 +117,11 @@ router.post('/process', async (req, res) => {
             return res.json({
                 success: true,
                 saleId: saleId,
-                message: 'Pedido enviado! Confirme no seu telemóvel introduzindo o PIN.',
+                message: 'Pedido enviado! Confirme no seu telemóvel.',
                 redirect: `/thank-you/${saleId}`
             });
         } else {
-            const saleId = `SALE-${Date.now()}`;
-            await Sale.create({
-                id: saleId,
-                product: productDetails ? productDetails.name : 'Venda Avulsa',
-                customer: name || 'Cliente Anónimo',
-                email: email || null,
-                phone: phone || null,
-                amount: parseFloat(amount),
-                status: 'Falhado',
-                vendedor_id: productDetails ? productDetails.vendedor_id : null,
-                productId: productDetails ? productDetails.id : null
-            });
-
-            return res.json({ success: false, error: (result.error || 'Erro desconhecido') });
+            return res.json({ success: false, error: (result.message || result.error || 'Erro no pagamento') });
         }
     } catch (err) {
         console.error(err);

@@ -1,4 +1,4 @@
-const axios = require('axios');
+const fetch = require('node-fetch');
 
 /**
  * Serviço de Integração com UTMify para o Projeto Lite
@@ -12,65 +12,75 @@ class UTMifyService {
 
     async enviarVenda(venda, produto, cliente, trackingParams = {}, options = {}) {
         try {
-            // No projeto Lite, usamos 'utmify_id' como a chave da API
-            const utmifyToken = produto.utmify_id;
+            // No projeto Lite, usamos 'utmify_id' ou 'utmfy_api_key'
+            const utmifyToken = produto.utmify_id || produto.utmfy_api_key;
 
             if (!utmifyToken) {
-                console.log('⚠️ UTMIFY: Produto não possui utmify_id configurado. Pulando envio.');
+                console.log('⚠️ UTMIFY: Produto não possui token configurado. Pulando envio.');
                 return { success: false, skipped: true };
             }
 
-            console.log(`🚀 UTMIFY: Enviando venda ${venda.id} para UTMify...`);
-
             const body = this.prepararDadosVenda(venda, produto, cliente, trackingParams, options);
 
-            const response = await axios.post(this.apiUrl, body, {
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
                 headers: {
                     'x-api-token': utmifyToken,
                     'Content-Type': 'application/json'
                 },
+                body: JSON.stringify(body),
                 timeout: this.timeout
             });
 
+            const result = await response.json();
+
+            if (!response.ok) {
+                console.error('❌ UTMIFY ERROR:', result);
+                return { success: false, error: result.message || 'Erro UTMify' };
+            }
+
             console.log('✅ UTMIFY SUCCESS');
-            return { success: true, response: response.data };
+            return { success: true, response: result };
 
         } catch (error) {
-            console.error('❌ UTMIFY ERROR:', error.response ? error.response.data : error.message);
+            console.error('❌ UTMIFY EXCEPTION:', error.message);
             return { success: false, error: error.message };
         }
     }
 
     prepararDadosVenda(venda, produto, cliente, trackingParams = {}, options = {}) {
         const createdAt = new Date().toISOString().replace('T', ' ').substring(0, 19);
-
         const valorTotal = parseFloat(venda.amount || venda.valor || 0);
         const valorTotalEmCentavos = Math.round(valorTotal * 100);
 
         return {
-            orderId: venda.id,
+            orderId: venda.id || `ped-${Date.now()}`,
             platform: 'MOZCOMPRAS',
             paymentMethod: this.mapearMetodoPagamento(venda.metodo_pagamento || options.provider),
-            status: 'paid', // Chamado após sucesso
+            status: this.mapearStatusPagamento(venda.status || 'paid'),
             createdAt: createdAt,
             approvedDate: createdAt,
             currency: 'MZN',
             customer: {
-                name: cliente.name || 'Cliente',
+                name: cliente.name || cliente.nome || 'Cliente',
                 email: cliente.email || '',
-                phone: this.formatarTelefone(cliente.phone || ''),
+                phone: this.formatarTelefone(cliente.phone || cliente.telefone || ''),
                 ip: cliente.ip || '0.0.0.0'
             },
             products: [{
                 id: produto.id,
-                name: produto.name,
+                name: produto.name || produto.nome,
                 quantity: 1,
                 priceInCents: valorTotalEmCentavos
             }],
             trackingParameters: {
                 utm_source: trackingParams.utm_source || null,
                 utm_medium: trackingParams.utm_medium || null,
-                utm_campaign: trackingParams.utm_campaign || null
+                utm_campaign: trackingParams.utm_campaign || null,
+                utm_content: trackingParams.utm_content || null,
+                utm_term: trackingParams.utm_term || null,
+                src: trackingParams.src || null,
+                sck: trackingParams.sck || null
             },
             commission: {
                 totalPriceInCents: valorTotalEmCentavos,
@@ -83,9 +93,15 @@ class UTMifyService {
     mapearMetodoPagamento(metodo) {
         if (!metodo) return 'unknown';
         const m = metodo.toLowerCase();
-        if (m.includes('mpesa')) return 'unknown';
-        if (m.includes('emola')) return 'unknown';
+        if (m.includes('cartao') || m.includes('card')) return 'credit_card';
         return 'unknown';
+    }
+
+    mapearStatusPagamento(status) {
+        if (!status) return 'paid';
+        const s = status.toLowerCase();
+        if (s.includes('pago') || s.includes('concluido') || s.includes('paid')) return 'paid';
+        return 'waiting_payment';
     }
 
     formatarTelefone(tel) {
