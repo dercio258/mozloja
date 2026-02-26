@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+const axios = require('axios');
 
 /**
  * Serviço de Integração com UTMify para o Projeto Lite
@@ -22,29 +22,22 @@ class UTMifyService {
 
             const body = this.prepararDadosVenda(venda, produto, cliente, trackingParams, options);
 
-            const response = await fetch(this.apiUrl, {
-                method: 'POST',
+            const response = await axios.post(this.apiUrl, body, {
                 headers: {
                     'x-api-token': utmifyToken,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(body),
                 timeout: this.timeout
             });
 
-            const result = await response.json();
-
-            if (!response.ok) {
-                console.error('❌ UTMIFY ERROR:', result);
-                return { success: false, error: result.message || 'Erro UTMify' };
-            }
+            const result = response.data;
 
             console.log('✅ UTMIFY SUCCESS');
             return { success: true, response: result };
 
         } catch (error) {
-            console.error('❌ UTMIFY EXCEPTION:', error.message);
-            return { success: false, error: error.message };
+            console.error('❌ UTMIFY EXCEPTION:', error.response?.data || error.message);
+            return { success: false, error: error.response?.data?.message || error.message };
         }
     }
 
