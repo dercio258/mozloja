@@ -62,12 +62,21 @@ router.post('/process', async (req, res) => {
             // Usar o ID retornado pela API para rastreamento robusto
             const ref = result.transaction_id || result.data?.id || (result.data && result.data.debito_reference) || 'Sem Ref';
 
+            const txStatus = result.status ? result.status.toLowerCase() : 'completed';
+            let withdrawStatus = 'Concluído';
+            if (['pending', 'processing', 'awaiting_confirmation'].includes(txStatus)) {
+                withdrawStatus = 'Pendente';
+            } else if (['failed', 'cancelled', 'expired', 'rejected'].includes(txStatus)) {
+                withdrawStatus = 'Falhado';
+            }
+
             await Withdrawal.create({
                 id: `WD-${Date.now()}`,
                 method: provider,
                 amount: withdrawAmount,
-                status: 'Concluído', // Saque B2C geralmente é imediato na API de Debito
-                ref: ref.toString()
+                status: withdrawStatus,
+                ref: ref.toString(),
+                vendedor_id: req.user.id
             });
 
             const updated = await getBalanceAndHistory();
@@ -75,7 +84,9 @@ router.post('/process', async (req, res) => {
             res.render('saque', {
                 balance: updated.balance,
                 withdrawals: updated.withdrawals,
-                success: `Saque de ${withdrawAmount} MT via ${provider} realizado com sucesso! Ref: ${ref}`,
+                success: withdrawStatus === 'Concluído'
+                    ? `Saque de ${withdrawAmount} MT via ${provider} realizado com sucesso! Ref: ${ref}`
+                    : `Pedido de saque de ${withdrawAmount} MT via ${provider} enviado e está sendo processado. Ref: ${ref}`,
                 error: null
             });
         } else {

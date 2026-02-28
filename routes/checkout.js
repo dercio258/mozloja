@@ -96,6 +96,8 @@ router.post('/process', async (req, res) => {
             // Use transaction_id or fallback to reference from data
             const externalRef = result.transaction_id || result.data?.id || result.data?.reference;
 
+            const saleStatus = result.status ? (['successful', 'completed', 'paid', 'concluido', 'approved', 'success'].includes(result.status.toLowerCase()) ? 'Concluído' : (['failed', 'cancelled', 'expired', 'rejected'].includes(result.status.toLowerCase()) ? 'Falhado' : 'Pendente')) : 'Pendente';
+
             await Sale.create({
                 id: saleId,
                 product: productDetails ? productDetails.name : 'Venda Avulsa',
@@ -103,7 +105,7 @@ router.post('/process', async (req, res) => {
                 email: email || null,
                 phone: phone || null,
                 amount: parseFloat(amount),
-                status: 'Pendente',
+                status: saleStatus,
                 vendedor_id: productDetails ? productDetails.vendedor_id : null,
                 productId: productDetails ? (productDetails.id || productId) : null,
                 external_reference: externalRef ? externalRef.toString() : null
@@ -117,7 +119,7 @@ router.post('/process', async (req, res) => {
             return res.json({
                 success: true,
                 saleId: saleId,
-                message: 'Pedido enviado! Confirme no seu telemóvel.',
+                message: saleStatus === 'Concluído' ? 'Pagamento confirmado!' : 'Pedido enviado! Confirme no seu telemóvel.',
                 redirect: `/thank-you/${saleId}`
             });
         } else {

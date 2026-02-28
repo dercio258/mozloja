@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Sale = require('../models/Sale');
 const Product = require('../models/Product');
+const Withdrawal = require('../models/Withdrawal');
 const utmifyService = require('../services/utmifyService');
 const axios = require('axios');
 
@@ -20,59 +21,79 @@ router.post('/debito', async (req, res) => {
             return res.status(400).send('Missing reference identifier');
         }
 
+        const normalizedStatus = txStatus ? txStatus.toLowerCase() : '';
+        const isSuccess = ['successful', 'completed', 'paid', 'concluido', 'approved', 'success'].includes(normalizedStatus);
+        const isFailure = ['failed', 'cancelled', 'expired', 'rejected', 'error'].includes(normalizedStatus);
+
+        // Try to find a Sale first
         const sale = await Sale.findOne({
             where: { external_reference: txReference.toString() }
         });
 
-        if (!sale) {
-            console.warn(`Sale not found for reference: ${txReference}`);
-            return res.status(404).send('Sale not found');
-        }
+        if (sale) {
+            if (sale.status !== 'Pendente') {
+                return res.json({ success: true, message: 'Sale status already updated' });
+            }
 
-        if (sale.status !== 'Pendente') {
-            return res.json({ success: true, message: 'Status already updated' });
-        }
+            if (isSuccess) {
+                await sale.update({ status: 'Concluído' });
+                console.log(`✅ Sale ${sale.id} confirmed via webhook`);
 
-        const normalizedStatus = txStatus ? txStatus.toLowerCase() : '';
-
-        // Status alignment with main project
-        if (['successful', 'completed', 'paid', 'concluido', 'approved'].includes(normalizedStatus)) {
-            await sale.update({ status: 'Concluído' });
-            console.log(`✅ Sale ${sale.id} confirmed`);
-
-            if (sale.productId) {
-                const product = await Product.findByPk(sale.productId);
-                if (product) {
-                    // Trigger UTMify
-                    try {
-                        await utmifyService.enviarVenda(
-                            sale,
-                            product,
-                            { name: sale.customer, email: sale.email, phone: sale.phone },
-                            {} // UTM params from sale.tracking_data if implemented
-                        );
-                    } catch (utmErr) {
-                        console.error('UTMify error:', utmErr.message);
-                    }
-
-                    // Merchant Webhook
-                    if (product.webhook_url) {
+                if (sale.productId) {
+                    const product = await Product.findByPk(sale.productId);
+                    if (product) {
                         try {
-                            await axios.post(product.webhook_url, {
-                                event: 'order.paid',
-                                data: { id: sale.id, status: 'paid', amount: sale.amount }
-                            }, { timeout: 5000 });
-                        } catch (webhookErr) {
-                            console.error('Webhook error:', webhookErr.message);
+                            await utmifyService.enviarVenda(
+                                sale,
+                                product,
+                                { name: sale.customer, email: sale.email, phone: sale.phone },
+                                {}
+                            );
+                        } catch (utmErr) {
+                            console.error('UTMify error:', utmErr.message);
+                        }
+
+                        if (product.webhook_url) {
+                            try {
+                                await axios.post(product.webhook_url, {
+                                    event: 'order.paid',
+                                    data: { id: sale.id, status: 'paid', amount: sale.amount, reference: txReference }
+                                }, { timeout: 5000 });
+                            } catch (webhookErr) {
+                                console.error('Webhook error:', webhookErr.message);
+                            }
                         }
                     }
                 }
+            } else if (isFailure) {
+                await sale.update({ status: 'Falhado' });
+                console.log(`❌ Sale ${sale.id} marked as failed via webhook`);
             }
-        } else if (['failed', 'cancelled', 'expired'].includes(normalizedStatus)) {
-            await sale.update({ status: 'Falhado' });
+            return res.json({ success: true });
         }
 
-        return res.json({ success: true });
+        // If no sale, try to find a Withdrawal
+        const withdrawal = await Withdrawal.findOne({
+            where: { ref: txReference.toString() }
+        });
+
+        if (withdrawal) {
+            if (withdrawal.status !== 'Pendente') {
+                return res.json({ success: true, message: 'Withdrawal status already updated' });
+            }
+
+            if (isSuccess) {
+                await withdrawal.update({ status: 'Concluído' });
+                console.log(`✅ Withdrawal ${withdrawal.id} confirmed via webhook`);
+            } else if (isFailure) {
+                await withdrawal.update({ status: 'Falhado' });
+                console.log(`❌ Withdrawal ${withdrawal.id} marked as failed via webhook`);
+            }
+            return res.json({ success: true });
+        }
+
+        console.warn(`Reference not found in Sales or Withdrawals: ${txReference}`);
+        return res.status(404).send('Reference not found');
     } catch (err) {
         console.error('Webhook Error:', err);
         return res.status(500).send('Internal Error');

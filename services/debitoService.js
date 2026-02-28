@@ -95,7 +95,8 @@ class DebitoService {
             return {
                 success: true,
                 data: response.data,
-                transaction_id: response.data.transaction_id || response.data.id || null
+                transaction_id: response.data.transaction_id || response.data.id || null,
+                status: response.data.status || null
             };
         } catch (error) {
             console.error('❌ [Debito] CARD Payment Failed:', error.response?.data || error.message);
@@ -133,7 +134,8 @@ class DebitoService {
             return {
                 success: true,
                 data: response.data,
-                transaction_id: response.data.transaction_id || response.data.id || null
+                transaction_id: response.data.transaction_id || response.data.id || null,
+                status: response.data.status || null
             };
         } catch (error) {
             console.error(`❌ [Debito] ${channel.toUpperCase()} C2B Failed:`, error.response?.data || error.message);
@@ -171,7 +173,8 @@ class DebitoService {
             return {
                 success: true,
                 data: response.data,
-                transaction_id: response.data.transaction_id || response.data.id || null
+                transaction_id: response.data.transaction_id || response.data.id || null,
+                status: response.data.status || null
             };
         } catch (error) {
             console.error(`❌ [Debito] ${channel.toUpperCase()} B2C Failed:`, error.response?.data || error.message);
