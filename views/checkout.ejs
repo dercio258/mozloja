@@ -382,17 +382,12 @@
                     };
                     localStorage.setItem('metaPixelConfig', JSON.stringify(configObj));
 
-                    // Logic to track InitiateCheckout immediately if fbq is ready
-                    // Otherwise meta-pixel-unified.js will pick it up from localStorage
-                    if (window.fbq) {
-                        fbq('track', 'InitiateCheckout', {
-                            content_name: pName,
-                            content_ids: [pId],
-                            content_type: 'product',
-                            value: parseFloat(config.parentElement.querySelector('input[name="amount"]')?.value || '0'),
-                            currency: 'MZN'
-                        });
-                    }
+                    // Export currentProduct for MetaPixelUnified
+                    window.currentProduct = {
+                        id: pId,
+                        nome: pName,
+                        preco: parseFloat(document.querySelector('input[name="amount"]')?.value || '0')
+                    };
                 }
 
                 // Save to localStorage for umtfy-dynamic.js
@@ -487,7 +482,7 @@
 
                                         <div class="checkout-final-info">
                                             <span>Total a pagar</span>
-                                            <span class="total-pay-row">
+                                            <span class="total-pay-row total-value">
                                                 <%= calculatedPrice.toFixed(2) %> MT
                                             </span>
                                         </div>

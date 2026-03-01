@@ -291,6 +291,7 @@ router.get('/thank-you/:saleId', async (req, res) => {
         let utmifyId = null;
 
         if (sale.productId) {
+            // ... (rest of the existing logic to find product details)
             const mockData = {
                 '101': { link: 'https://mega.nz/file/mock-curso-mkt', pixel: '11111111111', utmify: 'token-mock-1' },
                 '102': { link: 'https://mega.nz/file/mock-mentoria', pixel: '22222222222', utmify: 'token-mock-2' },
@@ -309,6 +310,22 @@ router.get('/thank-you/:saleId', async (req, res) => {
                     pixelId = product.pixel_id;
                     utmifyId = product.utmify_id;
                 }
+            }
+        }
+
+        // Logic for page expiration
+        const now = new Date();
+        if (!sale.firstAccessedAt) {
+            // First time accessing, save the timestamp
+            await Sale.update({ firstAccessedAt: now }, { where: { id: saleId } });
+        } else {
+            // Check if 30 minutes have passed since first access
+            const firstAccess = new Date(sale.firstAccessedAt);
+            const diffInMinutes = (now - firstAccess) / (1000 * 60);
+
+            if (diffInMinutes > 30) {
+                console.log(`[Expiration] Sale ${saleId} thank you page expired. Redirecting to backup.`);
+                return res.redirect('https://cssloaders.github.io/');
             }
         }
 

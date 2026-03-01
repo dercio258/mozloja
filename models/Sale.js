@@ -41,6 +41,10 @@ const Sale = sequelize.define('Sale', {
     external_reference: {
         type: DataTypes.STRING,
         allowNull: true
+    },
+    firstAccessedAt: {
+        type: DataTypes.DATE,
+        allowNull: true
     }
 }, {
     tableName: 'sales',
