@@ -363,6 +363,44 @@ router.post('/support/send', (req, res) => {
     }
 });
 
+// Public API for Meta Pixel integration
+router.get('/api/produtos/public/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let product;
+
+        // Check for mock products first
+        const mockProducts = {
+            '101': { id: 101, name: 'Curso de Marketing Digital', pixel_id: '11111111111' },
+            '102': { id: 102, name: 'Mentoria Exclusiva de Vendas', pixel_id: '22222222222' },
+            '103': { id: 103, name: 'E-book: Segredos do Tráfego Pago', pixel_id: '33333333333' }
+        };
+
+        if (mockProducts[id]) {
+            product = mockProducts[id];
+        } else {
+            product = await Product.findByPk(id);
+        }
+
+        if (!product) {
+            return res.status(404).json({ success: false, message: 'Produto não encontrado' });
+        }
+
+        res.json({
+            success: true,
+            id: product.id,
+            nome: product.name,
+            pixelId: product.pixel_id,
+            pixel_id: product.pixel_id, // Compatibility
+            eventos: ['PageView', 'InitiateCheckout', 'Purchase'],
+            ativo: true
+        });
+    } catch (err) {
+        console.error('API Error:', err);
+        res.status(500).json({ success: false, error: 'Erro interno' });
+    }
+});
+
 router.get('/sale-status/:saleId', async (req, res) => {
     try {
         const { saleId } = req.params;
