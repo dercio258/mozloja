@@ -99,9 +99,13 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
         let revenue30d = 0;
         let balance = 0;
 
-        let countSuccess = 0;
-        let countPending = 0;
-        let countFailed = 0;
+        const metrics = {
+            today: { revenue: 0, success: 0, pending: 0, failed: 0, balance: 0 },
+            yesterday: { revenue: 0, success: 0, pending: 0, failed: 0, balance: 0 },
+            sevenDays: { revenue: 0, success: 0, pending: 0, failed: 0, balance: 0 },
+            thirtyDays: { revenue: 0, success: 0, pending: 0, failed: 0, balance: 0 },
+            total: { revenue: 0, success: 0, pending: 0, failed: 0, balance: 0 }
+        };
 
         const now = new Date();
         const startOfDate = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -139,57 +143,72 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
             const saleTime = startOfDate(saleDate);
             const saleHourStr = `${saleDate.getHours()}h`;
 
+            // Global/Total stats
             if (sale.status === 'Concluído') {
-                countSuccess++;
-                totalRevenue += sale.amount;
-                balance += sale.amount;
-
-                if (saleTime === todayNum) {
-                    revenueToday += sale.amount;
-                    todayHourlyMap[saleHourStr] += sale.amount;
-                }
-                if (saleTime === yesterdayNum) {
-                    revenueYesterday += sale.amount;
-                    yesterdayHourlyMap[saleHourStr] += sale.amount;
-                }
-                if (saleTime >= sevenDaysAgo) {
-                    revenue7d += sale.amount;
-                    const dateStr = `${saleDate.getDate()}/${saleDate.getMonth() + 1}`;
-                    if (last7DaysMap[dateStr] !== undefined) {
-                        last7DaysMap[dateStr] += sale.amount;
-                    }
-                }
-                if (saleTime >= thirtyDaysAgo) {
-                    revenue30d += sale.amount;
-                    const dateStr = `${saleDate.getDate()}/${saleDate.getMonth() + 1}`;
-                    if (last30DaysMap[dateStr] !== undefined) {
-                        last30DaysMap[dateStr] += sale.amount;
-                    }
-                }
-
+                metrics.total.success++;
+                metrics.total.revenue += sale.amount;
+                metrics.total.balance += sale.amount;
             } else if (sale.status === 'Pendente') {
-                countPending++;
+                metrics.total.pending++;
             } else {
-                countFailed++;
+                metrics.total.failed++;
+            }
+
+            // Period counts (independent of status for counts, but revenue only for Concluído)
+            const updatePeriod = (periodKey) => {
+                if (sale.status === 'Concluído') {
+                    metrics[periodKey].success++;
+                    metrics[periodKey].revenue += sale.amount;
+                    metrics[periodKey].balance += sale.amount;
+                } else if (sale.status === 'Pendente') {
+                    metrics[periodKey].pending++;
+                } else {
+                    metrics[periodKey].failed++;
+                }
+            };
+
+            if (saleTime === todayNum) {
+                updatePeriod('today');
+                if (sale.status === 'Concluído') todayHourlyMap[saleHourStr] += sale.amount;
+            }
+            if (saleTime === yesterdayNum) {
+                updatePeriod('yesterday');
+                if (sale.status === 'Concluído') yesterdayHourlyMap[saleHourStr] += sale.amount;
+            }
+            if (saleTime >= sevenDaysAgo) {
+                updatePeriod('sevenDays');
+                if (sale.status === 'Concluído') {
+                    const dateStr = `${saleDate.getDate()}/${saleDate.getMonth() + 1}`;
+                    if (last7DaysMap[dateStr] !== undefined) last7DaysMap[dateStr] += sale.amount;
+                }
+            }
+            if (saleTime >= thirtyDaysAgo) {
+                updatePeriod('thirtyDays');
+                if (sale.status === 'Concluído') {
+                    const dateStr = `${saleDate.getDate()}/${saleDate.getMonth() + 1}`;
+                    if (last30DaysMap[dateStr] !== undefined) last30DaysMap[dateStr] += sale.amount;
+                }
             }
         });
 
         withdrawals.forEach(wd => {
-            if (wd.status === 'Concluído') {
-                balance -= wd.amount;
+            if (wd.status === 'Concluído' && wd.createdAt) {
+                const wdTime = startOfDate(new Date(wd.createdAt));
+                metrics.total.balance -= wd.amount;
+                if (wdTime === todayNum) metrics.today.balance -= wd.amount;
+                if (wdTime === yesterdayNum) metrics.yesterday.balance -= wd.amount;
+                if (wdTime >= sevenDaysAgo) metrics.sevenDays.balance -= wd.amount;
+                if (wdTime >= thirtyDaysAgo) metrics.thirtyDays.balance -= wd.amount;
             }
         });
 
         res.render('dashboard', {
-            balance,
-            totalRevenue,
-            revenueToday,
-            revenueYesterday,
-            revenue7d,
-            revenue30d,
-            countSuccess,
-            countPending,
-            countFailed,
+            balance: metrics.total.balance,
+            totalRevenue: metrics.total.revenue,
+            countSuccess: metrics.total.success,
+            countPending: metrics.total.pending,
+            countFailed: metrics.total.failed,
+            metrics: metrics,
             chartLabels: JSON.stringify(Object.keys(last7DaysMap)),
             chartData: JSON.stringify(Object.values(last7DaysMap)),
             chartLabelsToday: JSON.stringify(Object.keys(todayHourlyMap)),
