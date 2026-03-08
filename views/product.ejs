@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOZCOMPRAS - Detalhes do Produto</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+    <nav>
+        <div class="logo">MOZCOMPRAS</div>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/products">Produtos</a>
+    </nav>
+    <div class="container">
+        <div class="product-detail">
+            <h1>
+                <%= product.name %>
+            </h1>
+            <img src="<%= product.image %>" alt="<%= product.name %>" style="max-width: 100%; height: auto;">
+            <p class="price">
+                <%= product.price %> MT
+            </p>
+            <div class="content-link">
+                <h3>Content Link:</h3>
+                <a href="<%= product.link_conteudo %>" target="_blank">Access Content</a>
+            </div>
+            <br>
+            <a href="/checkout/init/<%= product.id %>" class="btn">Comprar Agora</a>
+        </div>
+    </div>
+</body>
+
+</html>

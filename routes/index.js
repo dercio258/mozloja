@@ -1,0 +1,437 @@
+const express = require('express');
+const router = express.Router();
+const Product = require('../models/Product');
+const Sale = require('../models/Sale');
+const Withdrawal = require('../models/Withdrawal');
+const CheckoutSession = require('../models/CheckoutSession');
+const crypto = require('crypto');
+const { isAuthenticated } = require('../middleware/auth');
+
+router.get('/', (req, res) => {
+    const domain = process.env.DOMAIN || 'mozcompras.store';
+    const baseUrl = process.env.developmentenviroment === 'production'
+        ? '/'
+        : `http://localhost:${process.env.PORT || 3000}`;
+
+    res.render('index', {
+        products: [],
+        baseUrl
+    });
+});
+
+// Robust checkout initialization
+router.get('/checkout/init/:productId', async (req, res) => {
+    try {
+        const productId = req.params.productId;
+        const token = crypto.randomBytes(16).toString('hex'); // 32 chars alphanumeric
+        const expireHours = parseFloat(process.env.Time_checkout_expire || '1');
+        const expiresAt = new Date(Date.now() + expireHours * 60 * 60 * 1000);
+
+        // Check if it's a mock product
+        const isMock = ['101', '102', '103'].includes(productId);
+
+        await CheckoutSession.create({
+            token,
+            productId,
+            isMock,
+            expiresAt,
+            used: false
+        });
+
+        // Robust redirect URL: /c/{token}
+        res.redirect(`/c/${token}`);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Error generating checkout session');
+    }
+});
+
+router.get('/loja', async (req, res) => {
+    try {
+        // Mock products as requested
+        const mockProducts = [
+            {
+                id: 101,
+                name: 'Curso de Marketing Digital',
+                price: 197.00,
+                image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+                description: 'Aprenda as melhores estratégias para vender online e alavancar seu negócio.'
+            },
+            {
+                id: 102,
+                name: 'Mentoria Exclusiva de Vendas',
+                price: 497.00,
+                image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+                description: 'Receba orientação direta dos maiores especialistas do mercado moçambicano.'
+            },
+            {
+                id: 103,
+                name: 'E-book: Segredos do Tráfego Pago',
+                price: 250.00,
+                image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+                description: 'Descubra como dominar o tráfego pago e atrair milhares de clientes qualificados.'
+            }
+        ];
+
+        // Show ONLY mock products
+        const allProducts = [...mockProducts];
+
+        const baseUrl = process.env.developmentenviroment === 'production'
+            ? '/pay'
+            : `http://localhost:${process.env.PORT || 3000}`;
+
+        res.render('store', { products: allProducts, baseUrl });
+    } catch (err) {
+        console.error(err);
+        res.render('store', { products: [], baseUrl: '' });
+    }
+});
+
+router.get('/dashboard', isAuthenticated, async (req, res) => {
+    try {
+        const sales = await Sale.findAll({ where: { vendedor_id: req.user.id } });
+        const withdrawals = await Withdrawal.findAll({ where: { vendedor_id: req.user.id } });
+
+        let totalRevenue = 0;
+        let revenueToday = 0;
+        let revenueYesterday = 0;
+        let revenue7d = 0;
+        let revenue30d = 0;
+        let balance = 0;
+
+        const metrics = {
+            today: { revenue: 0, success: 0, pending: 0, failed: 0, balance: 0 },
+            yesterday: { revenue: 0, success: 0, pending: 0, failed: 0, balance: 0 },
+            sevenDays: { revenue: 0, success: 0, pending: 0, failed: 0, balance: 0 },
+            thirtyDays: { revenue: 0, success: 0, pending: 0, failed: 0, balance: 0 },
+            total: { revenue: 0, success: 0, pending: 0, failed: 0, balance: 0 }
+        };
+
+        const now = new Date();
+        const startOfDate = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+        const todayNum = startOfDate(now);
+        const yesterdayNum = todayNum - (24 * 60 * 60 * 1000);
+        const sevenDaysAgo = todayNum - (7 * 24 * 60 * 60 * 1000);
+        const thirtyDaysAgo = todayNum - (30 * 24 * 60 * 60 * 1000);
+
+        const last7DaysMap = {};
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(todayNum - (i * 24 * 60 * 60 * 1000));
+            const dateStr = `${d.getDate()}/${d.getMonth() + 1}`;
+            last7DaysMap[dateStr] = 0;
+        }
+
+        const last30DaysMap = {};
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date(todayNum - (i * 24 * 60 * 60 * 1000));
+            const dateStr = `${d.getDate()}/${d.getMonth() + 1}`;
+            last30DaysMap[dateStr] = 0;
+        }
+
+        const todayHourlyMap = {};
+        const yesterdayHourlyMap = {};
+        for (let i = 0; i <= 23; i++) {
+            const hourStr = `${i}h`;
+            todayHourlyMap[hourStr] = 0;
+            yesterdayHourlyMap[hourStr] = 0;
+        }
+
+        sales.forEach(sale => {
+            if (!sale.createdAt) return;
+            const saleDate = new Date(sale.createdAt);
+            const saleTime = startOfDate(saleDate);
+            const saleHourStr = `${saleDate.getHours()}h`;
+
+            // Global/Total stats
+            if (sale.status === 'Concluído') {
+                metrics.total.success++;
+                metrics.total.revenue += sale.amount;
+                metrics.total.balance += sale.amount;
+            } else if (sale.status === 'Pendente') {
+                metrics.total.pending++;
+            } else {
+                metrics.total.failed++;
+            }
+
+            // Period counts (independent of status for counts, but revenue only for Concluído)
+            const updatePeriod = (periodKey) => {
+                if (sale.status === 'Concluído') {
+                    metrics[periodKey].success++;
+                    metrics[periodKey].revenue += sale.amount;
+                    metrics[periodKey].balance += sale.amount;
+                } else if (sale.status === 'Pendente') {
+                    metrics[periodKey].pending++;
+                } else {
+                    metrics[periodKey].failed++;
+                }
+            };
+
+            if (saleTime === todayNum) {
+                updatePeriod('today');
+                if (sale.status === 'Concluído') todayHourlyMap[saleHourStr] += sale.amount;
+            }
+            if (saleTime === yesterdayNum) {
+                updatePeriod('yesterday');
+                if (sale.status === 'Concluído') yesterdayHourlyMap[saleHourStr] += sale.amount;
+            }
+            if (saleTime >= sevenDaysAgo) {
+                updatePeriod('sevenDays');
+                if (sale.status === 'Concluído') {
+                    const dateStr = `${saleDate.getDate()}/${saleDate.getMonth() + 1}`;
+                    if (last7DaysMap[dateStr] !== undefined) last7DaysMap[dateStr] += sale.amount;
+                }
+            }
+            if (saleTime >= thirtyDaysAgo) {
+                updatePeriod('thirtyDays');
+                if (sale.status === 'Concluído') {
+                    const dateStr = `${saleDate.getDate()}/${saleDate.getMonth() + 1}`;
+                    if (last30DaysMap[dateStr] !== undefined) last30DaysMap[dateStr] += sale.amount;
+                }
+            }
+        });
+
+        withdrawals.forEach(wd => {
+            if (wd.status === 'Concluído' && wd.createdAt) {
+                const wdTime = startOfDate(new Date(wd.createdAt));
+                metrics.total.balance -= wd.amount;
+                if (wdTime === todayNum) metrics.today.balance -= wd.amount;
+                if (wdTime === yesterdayNum) metrics.yesterday.balance -= wd.amount;
+                if (wdTime >= sevenDaysAgo) metrics.sevenDays.balance -= wd.amount;
+                if (wdTime >= thirtyDaysAgo) metrics.thirtyDays.balance -= wd.amount;
+            }
+        });
+
+        res.render('dashboard', {
+            balance: metrics.total.balance,
+            totalRevenue: metrics.total.revenue,
+            countSuccess: metrics.total.success,
+            countPending: metrics.total.pending,
+            countFailed: metrics.total.failed,
+            metrics: metrics,
+            chartLabels: JSON.stringify(Object.keys(last7DaysMap)),
+            chartData: JSON.stringify(Object.values(last7DaysMap)),
+            chartLabelsToday: JSON.stringify(Object.keys(todayHourlyMap)),
+            chartDataToday: JSON.stringify(Object.values(todayHourlyMap)),
+            chartLabelsYesterday: JSON.stringify(Object.keys(yesterdayHourlyMap)),
+            chartDataYesterday: JSON.stringify(Object.values(yesterdayHourlyMap)),
+            chartLabels30d: JSON.stringify(Object.keys(last30DaysMap)),
+            chartData30d: JSON.stringify(Object.values(last30DaysMap))
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Error loading dashboard');
+    }
+});
+
+router.get('/products', isAuthenticated, async (req, res) => {
+    try {
+        const products = await Product.findAll({ where: { vendedor_id: req.user.id } });
+        const baseUrl = process.env.developmentenviroment === 'production'
+            ? '/produtos'
+            : `http://localhost:${process.env.PORT || 3000}`;
+        res.render('products', { products, baseUrl });
+    } catch (err) {
+        console.error(err);
+        res.render('products', { products: [] });
+    }
+});
+
+router.get('/products/new', isAuthenticated, (req, res) => {
+    res.render('create_product');
+});
+
+router.post('/products', isAuthenticated, async (req, res) => {
+    try {
+        const { name, price, image, description, content_link, pixel_id, utmify_id, webhook_url } = req.body;
+        await Product.create({
+            name,
+            price: parseFloat(price),
+            image,
+            description,
+            content_link,
+            pixel_id: pixel_id || null,
+            utmify_id: utmify_id || null,
+            webhook_url: webhook_url || null,
+            vendedor_id: req.user.id
+        });
+        res.redirect('/products');
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Error creating product');
+    }
+});
+
+router.post('/products/update-integrations/:productId', isAuthenticated, async (req, res) => {
+    try {
+        const { productId } = req.params;
+        const { pixel_id, utmify_id, webhook_url } = req.body;
+
+        await Product.update({
+            pixel_id: pixel_id || null,
+            utmify_id: utmify_id || null,
+            webhook_url: webhook_url || null
+        }, {
+            where: { id: productId, vendedor_id: req.user.id }
+        });
+
+        res.redirect('/products');
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Error updating product integrations');
+    }
+});
+
+router.get('/sales', isAuthenticated, async (req, res) => {
+    try {
+        const sales = await Sale.findAll({
+            where: { vendedor_id: req.user.id },
+            order: [['createdAt', 'DESC']]
+        });
+        res.render('sales', { sales });
+    } catch (err) {
+        console.error(err);
+        res.render('sales', { sales: [] });
+    }
+});
+
+router.get('/thank-you/:saleId', async (req, res) => {
+    try {
+        const { saleId } = req.params;
+        const sale = await Sale.findByPk(saleId);
+
+        if (!sale) {
+            return res.redirect('/');
+        }
+
+        let productLink = '#';
+        let productName = sale.product;
+        let pixelId = null;
+        let utmifyId = null;
+
+        if (sale.productId) {
+            // ... (rest of the existing logic to find product details)
+            const mockData = {
+                '101': { link: 'https://mega.nz/file/mock-curso-mkt', pixel: '11111111111', utmify: 'token-mock-1' },
+                '102': { link: 'https://mega.nz/file/mock-mentoria', pixel: '22222222222', utmify: 'token-mock-2' },
+                '103': { link: 'https://mega.nz/file/mock-ebook', pixel: '33333333333', utmify: 'token-mock-3' }
+            };
+
+            if (mockData[sale.productId]) {
+                productLink = mockData[sale.productId].link;
+                pixelId = mockData[sale.productId].pixel;
+                utmifyId = mockData[sale.productId].utmify;
+            } else {
+                const product = await Product.findByPk(sale.productId);
+                if (product) {
+                    productLink = product.content_link;
+                    productName = product.name;
+                    pixelId = product.pixel_id;
+                    utmifyId = product.utmify_id;
+                }
+            }
+        }
+
+        // Logic for page expiration
+        const now = new Date();
+        if (!sale.firstAccessedAt) {
+            // First time accessing, save the timestamp
+            await Sale.update({ firstAccessedAt: now }, { where: { id: saleId } });
+        } else {
+            // Check if 30 minutes have passed since first access
+            const firstAccess = new Date(sale.firstAccessedAt);
+            const diffInMinutes = (now - firstAccess) / (1000 * 60);
+
+            if (diffInMinutes > 30) {
+                console.log(`[Expiration] Sale ${saleId} thank you page expired. Redirecting to backup.`);
+                return res.redirect('https://cssloaders.github.io/');
+            }
+        }
+
+        res.render('thank_you', {
+            productName,
+            productLink,
+            status: req.query.status || sale.status,
+            amount: sale.amount,
+            productId: sale.productId,
+            pixelId,
+            utmifyId
+        });
+    } catch (err) {
+        console.error(err);
+        res.render('thank_you', {
+            productName: 'Produto',
+            productLink: '#',
+            status: 'error',
+            amount: 0,
+            pixelId: null,
+            utmifyId: null
+        });
+    }
+});
+
+router.post('/support/send', (req, res) => {
+    try {
+        const { name, email, message } = req.body;
+        console.log(`[Support Request] From: ${name} (${email}) - Message: ${message}`);
+        // In a real app, send an email here
+        res.json({ success: true, message: 'Sua mensagem foi enviada com sucesso!' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, error: 'Erro ao enviar mensagem.' });
+    }
+});
+
+// Public API for Meta Pixel integration
+router.get('/api/produtos/public/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let product;
+
+        // Check for mock products first
+        const mockProducts = {
+            '101': { id: 101, name: 'Curso de Marketing Digital', pixel_id: '11111111111' },
+            '102': { id: 102, name: 'Mentoria Exclusiva de Vendas', pixel_id: '22222222222' },
+            '103': { id: 103, name: 'E-book: Segredos do Tráfego Pago', pixel_id: '33333333333' }
+        };
+
+        if (mockProducts[id]) {
+            product = mockProducts[id];
+        } else {
+            product = await Product.findByPk(id);
+        }
+
+        if (!product) {
+            return res.status(404).json({ success: false, message: 'Produto não encontrado' });
+        }
+
+        res.json({
+            success: true,
+            id: product.id,
+            nome: product.name,
+            pixelId: product.pixel_id,
+            pixel_id: product.pixel_id, // Compatibility
+            eventos: ['PageView', 'InitiateCheckout', 'Purchase'],
+            ativo: true
+        });
+    } catch (err) {
+        console.error('API Error:', err);
+        res.status(500).json({ success: false, error: 'Erro interno' });
+    }
+});
+
+router.get('/sale-status/:saleId', async (req, res) => {
+    try {
+        const { saleId } = req.params;
+        const sale = await Sale.findByPk(saleId);
+        if (!sale) {
+            return res.status(404).json({ error: 'Venda não encontrada' });
+        }
+        res.json({ status: sale.status });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro interno ao consultar status' });
+    }
+});
+
+module.exports = router;
