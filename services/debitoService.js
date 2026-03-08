@@ -122,7 +122,9 @@ class DebitoService {
             const payload = {
                 msisdn: this.normalizeMSISDN(msisdn),
                 amount: parseFloat(amount),
+                reference: reference || `Ped-${Date.now()}`,
                 reference_description: reference || `Ped-${Date.now()}`,
+                callback_url: process.env.DEBITO_CALLBACK_URL || (process.env.PRODUCTION_URL ? (process.env.PRODUCTION_URL + '/webhooks/debito') : null),
                 internal_notes: `Pagamento ${channel.toUpperCase()} Lite Project`
             };
 
@@ -169,7 +171,9 @@ class DebitoService {
             const payload = {
                 msisdn: this.normalizeMSISDN(msisdn),
                 amount: parseFloat(amount),
+                reference: reference || `Saque-${Date.now()}`,
                 reference_description: reference || `Saque-${Date.now()}`,
+                callback_url: process.env.DEBITO_CALLBACK_URL || (process.env.PRODUCTION_URL ? (process.env.PRODUCTION_URL + '/webhooks/debito') : null),
                 internal_notes: `Saque ${channel.toUpperCase()} Lite Project`
             };
 
