@@ -138,6 +138,7 @@ class DebitoService {
                 status: response.data.status || null
             };
         } catch (error) {
+<<<<<<< HEAD
             const errorMsg = error.response?.data?.message || error.message;
             console.error(`❌ [Debito] ${channel.toUpperCase()} C2B Failed:`, {
                 channel,
@@ -148,6 +149,10 @@ class DebitoService {
                 fullResponse: error.response?.data
             });
             return { success: false, message: errorMsg };
+=======
+            console.error(`❌ [Debito] ${channel.toUpperCase()} C2B Failed:`, error.response?.data || error.message);
+            return { success: false, message: error.response?.data?.message || error.message };
+>>>>>>> 6df7cc18eeb99449f722287fcf53809844216234
         }
     }
 
@@ -185,6 +190,7 @@ class DebitoService {
                 status: response.data.status || null
             };
         } catch (error) {
+<<<<<<< HEAD
             const errorMsg = error.response?.data?.message || error.message;
             console.error(`❌ [Debito] ${channel.toUpperCase()} B2C Failed:`, {
                 channel,
@@ -195,6 +201,10 @@ class DebitoService {
                 fullResponse: error.response?.data
             });
             return { success: false, message: errorMsg };
+=======
+            console.error(`❌ [Debito] ${channel.toUpperCase()} B2C Failed:`, error.response?.data || error.message);
+            return { success: false, message: error.response?.data?.message || error.message };
+>>>>>>> 6df7cc18eeb99449f722287fcf53809844216234
         }
     }
 
