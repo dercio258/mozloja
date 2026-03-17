@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const registerRoutes = require('./routes/register');
 const checkoutRoutes = require('./routes/checkout');
 const saqueRoutes = require('./routes/saque');
+const pagamentoRoutes = require('./routes/pagamento');
 const webhookRoutes = require('./routes/webhooks');
 const sequelize = require('./config/database');
 
@@ -70,12 +71,21 @@ app.use('/auth', authRoutes);
 app.use('/new_user', registerRoutes);
 app.use('/', checkoutRoutes);
 app.use('/saque', saqueRoutes);
+app.use('/api', pagamentoRoutes);
 app.use('/webhooks', webhookRoutes);
+
+const socketService = require('./services/socketService');
 
 sequelize.sync({ alter: true }).then(async () => {
     console.log('Database synchronized successfully.');
 
-    app.listen(PORT, () => {
+    const http = require('http');
+    const server = http.createServer(app);
+    
+    // Initialize Socket.io
+    socketService.init(server);
+
+    server.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
     });
 }).catch(err => {

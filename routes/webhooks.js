@@ -6,11 +6,11 @@ const Withdrawal = require('../models/Withdrawal');
 const utmifyService = require('../services/utmifyService');
 const axios = require('axios');
 
-// Webhook endpoint for Debito.co.mz / RatixPay
-// URL should be: https://yourdomain.com/webhooks/debito
-router.post('/debito', async (req, res) => {
+// Webhook endpoint for PaySuite
+// URL should be: https://yourdomain.com/webhooks/paysuite
+router.post('/paysuite', async (req, res) => {
     try {
-        console.log('Received Debito Webhook:', JSON.stringify(req.body));
+        console.log('Received PaySuite Webhook:', JSON.stringify(req.body));
 
         const { reference, status, data, external_id } = req.body;
 

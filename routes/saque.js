@@ -60,7 +60,7 @@ router.post('/process', async (req, res) => {
 
         if (result.success) {
             // Usar o ID retornado pela API para rastreamento robusto
-            const ref = result.transaction_id || result.data?.id || (result.data && result.data.debito_reference) || 'Sem Ref';
+            const ref = result.transaction_id || result.data?.id || 'Sem Ref';
 
             const txStatus = result.status ? result.status.toLowerCase() : 'completed';
             let withdrawStatus = 'Concluído';

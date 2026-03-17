@@ -45,7 +45,23 @@ const Sale = sequelize.define('Sale', {
     firstAccessedAt: {
         type: DataTypes.DATE,
         allowNull: true
-    }
+    },
+    payout_amount: {
+        type: DataTypes.FLOAT,
+        allowNull: true
+    },
+    affiliate_commission: {
+        type: DataTypes.FLOAT,
+        allowNull: true
+    },
+    utm_source: { type: DataTypes.STRING, allowNull: true },
+    utm_medium: { type: DataTypes.STRING, allowNull: true },
+    utm_campaign: { type: DataTypes.STRING, allowNull: true },
+    utm_content: { type: DataTypes.STRING, allowNull: true },
+    utm_term: { type: DataTypes.STRING, allowNull: true },
+    src: { type: DataTypes.STRING, allowNull: true },
+    sck: { type: DataTypes.STRING, allowNull: true },
+    gateway_id: { type: DataTypes.STRING, allowNull: true }
 }, {
     tableName: 'sales',
     timestamps: true // adds createdAt and updatedAt

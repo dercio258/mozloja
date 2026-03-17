@@ -412,6 +412,14 @@
     </script>
     <script src="/js/meta-pixel-unified.js" async></script>
     <script src="/js/umtfy-dynamic.js" async></script>
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <!-- Meta Pixel & tracking Data -->
+    <div id="pixel-config" 
+         data-pixel-id="<%= locals.product ? product.pixel_id : '' %>"
+         data-product-id="<%= locals.product ? product.id : '' %>"
+         data-product-name="<%= locals.product ? product.name : '' %>"
+         style="display:none;"></div>
 </head>
 
 <body>
@@ -427,7 +435,7 @@
 
         <div class="checkout-grid">
             <div class="checkout-form">
-                <form action="/process" method="POST">
+                <form action="/api/pagar" method="POST">
                     <% let basePrice=locals.product ? product.price : (locals.amount || 0); let
                         calculatedPrice=basePrice; if (gatilhoDesconto && gatilhoDesconto !=='off' ) { let
                         dVal=parseFloat(gatilhoDesconto); if (!isNaN(dVal) && dVal> 0 && dVal <= 100) {
@@ -472,6 +480,18 @@
                                                     <span>Emola</span>
                                                 </div>
                                             </label>
+                                        </div>
+
+                                        <!-- Order Bump Section -->
+                                        <div class="order-bump-container" style="margin: 1.5rem 0; border: 2px dashed var(--primary-color); border-radius: 0.75rem; padding: 1rem; background: rgba(79, 70, 229, 0.03);">
+                                            <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                                                <input type="checkbox" id="order-bump-checkbox" style="width: 18px; height: 18px; margin-top: 3px; accent-color: var(--primary-color); cursor: pointer;">
+                                                <div>
+                                                    <span style="background: var(--primary-color); color: white; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">OFERTA ÚNICA</span>
+                                                    <h4 style="margin: 4px 0; font-size: 0.85rem; color: var(--text-main);">Mentoria VIP de Aceleração 🚀</h4>
+                                                    <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">Aumente seus resultados em até 10x com suporte individual. <br>De <strike>497,00 MT</strike> por apenas <b>250,00 MT</b></p>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div class="form-group">
@@ -586,7 +606,7 @@
             </div>
 
             <script>
-                const checkoutForm = document.querySelector('form[action="/process"]');
+                const checkoutForm = document.querySelector('form[action="/api/pagar"]');
                 const paymentModal = document.getElementById('paymentModal');
                 const modalContent = document.getElementById('modalContent');
                 const phoneInput = document.getElementById('phone-input');
@@ -628,21 +648,41 @@
                             return;
                         }
 
-                        if (phone.length !== 9) {
-                            alert('O número deve ter exatamente 9 dígitos.');
-                            return;
-                        }
+                    if (phone.length !== 9) {
+                        alert('O número deve ter exatamente 9 dígitos.');
+                        return;
+                    }
 
-                        // Mostrar estado "Aguardando PIN"
+                    // Meta Pixel: InitiateCheckout
+                    const pConfig = document.getElementById('pixel-config');
+                    if (pConfig && pConfig.dataset.pixelId && window.fbq) {
+                        window.fbq('track', 'InitiateCheckout', {
+                            value: parseFloat(data.amount),
+                            currency: 'MZN',
+                            content_name: pConfig.dataset.productName,
+                            content_ids: [pConfig.dataset.productId]
+                        });
+                    }
+
+                    // Mostrar estado "Aguardando PIN"
                         showModalState('pending');
 
                         try {
-                            const response = await fetch('/process', {
+                            const orderBumps = [];
+                            const bumpCheckbox = document.getElementById('order-bump-checkbox');
+                            if (bumpCheckbox && bumpCheckbox.checked) {
+                                orderBumps.push('102');
+                            }
+
+                            const response = await fetch('/api/pagar', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json'
                                 },
-                                body: JSON.stringify(data)
+                                body: JSON.stringify({
+                                    ...data,
+                                    orderBumps
+                                })
                             });
 
                             const result = await response.json();
@@ -650,6 +690,31 @@
                             if (result.success) {
                                 // Trigger Original Initiation analytics if needed
                                 console.log('Payment initiated, starting poll for sale:', result.saleId);
+
+                                // Socket - Join the sale room for real-time success notification
+                                if (typeof io !== 'undefined') {
+                                    const socket = io();
+                                    socket.emit('join', result.saleId);
+                                    
+                                    socket.on('payment_success', (payload) => {
+                                        if (window.hasTrackedPurchase) return;
+                                        window.hasTrackedPurchase = true;
+
+                                        // Analytics Purchase
+                                        const config = document.getElementById('pixel-config');
+                                        if (config && config.dataset.pixelId && window.fbq) {
+                                            window.fbq('track', 'Purchase', {
+                                                value: parseFloat(data.amount),
+                                                currency: 'MZN',
+                                                content_name: config.dataset.productName,
+                                                content_ids: [config.dataset.productId]
+                                            });
+                                        }
+
+                                        showModalState('success');
+                                        setTimeout(() => { window.location.href = payload.redirect; }, 1500);
+                                    });
+                                }
 
                                 // Start Polling
                                 const pollInterval = setInterval(async () => {
@@ -659,6 +724,8 @@
 
                                         if (statusData.status === 'Concluído') {
                                             clearInterval(pollInterval);
+                                            if (window.hasTrackedPurchase) return; // Already tracked by Socket
+                                            window.hasTrackedPurchase = true;
 
                                             // Analytics Purchase
                                             const config = document.getElementById('pixel-config');
