@@ -102,10 +102,16 @@ router.post('/pagar', async (req, res) => {
                 await Sale.update({ gateway_id: gatewayId }, { where: { external_reference: reference } });
             }
 
-            // 4. Start Background Polling using the most reliable ID
-            const pollId = gatewayId || reference;
-            
+            // 4. Optionally Polling for final confirmation
             const poll = async () => {
+                // Skip polling for Debito service as requested by user
+                if (paymentService === debitoService) {
+                    console.log(`[Payment] Skipping polling for Debito service ref: ${reference}`);
+                    return;
+                }
+
+                const pollId = gatewayId || reference;
+            
                 let attempts = 0;
                 const maxAttempts = 3; // 2 minutes total at 40s
                 

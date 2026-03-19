@@ -129,6 +129,11 @@ router.post('/debito', async (req, res) => {
                     if (sale.productId) {
                         const product = await Product.findByPk(sale.productId);
                         if (product) {
+                            // Notify via Socket.io for real-time frontend update
+                            const socketService = require('../services/socketService');
+                            const redirectUrl = product.content_link || '/obrigado?venda=' + sale.id;
+                            socketService.notifyPaymentSuccess(sale.id.toString(), redirectUrl);
+
                             try {
                                 await utmifyService.enviarVenda(sale, product, { name: sale.customer, email: sale.email, phone: sale.phone }, {});
                             } catch (e) { console.error('UTMify error:', e.message); }
