@@ -60,7 +60,7 @@ router.get('/c/:token', async (req, res) => {
 
         res.render('checkout', {
             product: product,
-            sessionToken: token
+            sessionToken: sessionToken
         });
     } catch (err) {
         console.error('Checkout GET error:', err);
