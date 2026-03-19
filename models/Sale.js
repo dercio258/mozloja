@@ -61,7 +61,8 @@ const Sale = sequelize.define('Sale', {
     utm_term: { type: DataTypes.STRING, allowNull: true },
     src: { type: DataTypes.STRING, allowNull: true },
     sck: { type: DataTypes.STRING, allowNull: true },
-    gateway_id: { type: DataTypes.STRING, allowNull: true }
+    gateway_id: { type: DataTypes.STRING, allowNull: true },
+    payment_service: { type: DataTypes.STRING, allowNull: true }
 }, {
     tableName: 'sales',
     timestamps: true // adds createdAt and updatedAt

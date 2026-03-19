@@ -42,6 +42,14 @@ const Product = sequelize.define('Product', {
     vendedor_id: {
         type: DataTypes.INTEGER,
         allowNull: true
+    },
+    payment_service: {
+        type: DataTypes.STRING,
+        defaultValue: 'paysuite'
+    },
+    expiration_hours: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     }
 }, {
     tableName: 'products',

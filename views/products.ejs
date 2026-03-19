@@ -69,8 +69,8 @@
                                 </span>
                             </div>
                             <button class="btn-update"
-                                onclick="openIntegrationModal('<%= product.id %>', '<%= product.pixel_id %>', '<%= product.utmify_id %>', '<%= product.webhook_url %>')">
-                                Configurar Integrações
+                                onclick="openIntegrationModal('<%= product.id %>', '<%= product.pixel_id %>', '<%= product.utmify_id %>', '<%= product.webhook_url %>', '<%= product.payment_service %>', '<%= product.expiration_hours %>')">
+                                Configurar Produto
                             </button>
                         </div>
                         <a href="/checkout?product=<%= product.id %>" class="btn">Testar Checkout</a>
@@ -102,6 +102,17 @@
                     <label>Webhook URL</label>
                     <input type="url" name="webhook_url" id="modalWebhook" placeholder="https://seu-site.com/webhook">
                 </div>
+                <div class="form-group">
+                    <label>Serviço de Pagamento</label>
+                    <select name="payment_service" id="modalService" style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #cbd5e1;">
+                        <option value="paysuite">PaySuite (Padrão)</option>
+                        <option value="debito">Debito</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Expiração do Checkout (Horas)</label>
+                    <input type="number" name="expiration_hours" id="modalExpiration" placeholder="Ex: 15 (Deixe vazio para padrão)">
+                </div>
                 <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
                     <button type="submit" style="flex: 1;">Salvar</button>
                     <button type="button" onclick="closeIntModal()"
@@ -112,7 +123,7 @@
     </div>
 
     <script>
-        function openIntegrationModal(id, pixel, utm, webhook) {
+        function openIntegrationModal(id, pixel, utm, webhook, service, expiration) {
             const modal = document.getElementById('intModal');
             const form = document.getElementById('updateIntForm');
             form.action = '/products/update-integrations/' + id;
@@ -120,6 +131,8 @@
             document.getElementById('modalPixel').value = pixel;
             document.getElementById('modalUtmify').value = utm;
             document.getElementById('modalWebhook').value = webhook;
+            document.getElementById('modalService').value = service || 'paysuite';
+            document.getElementById('modalExpiration').value = (expiration && expiration !== 'null') ? expiration : '';
 
             modal.style.display = 'flex';
         }

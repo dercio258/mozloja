@@ -100,4 +100,71 @@ router.post('/paysuite', async (req, res) => {
     }
 });
 
+// Webhook endpoint for Debito
+router.post('/debito', async (req, res) => {
+    try {
+        console.log('Received Debito Webhook:', JSON.stringify(req.body));
+
+        // Use reference or transaction_id from the payload
+        const { reference, status, transaction_id, external_id } = req.body;
+        const txReference = reference || external_id || transaction_id;
+        
+        if (!txReference) {
+            return res.status(400).send('Missing reference identifier');
+        }
+
+        const normalizedStatus = status ? status.toLowerCase() : '';
+        const isSuccess = ['successful', 'completed', 'paid', 'concluido', 'approved', 'success'].includes(normalizedStatus);
+        const isFailure = ['failed', 'cancelled', 'expired', 'rejected', 'error'].includes(normalizedStatus);
+
+        // Try Sale
+        const sale = await Sale.findOne({ where: { external_reference: txReference.toString() } });
+        if (sale) {
+            if (sale.status === 'Pendente') {
+                if (isSuccess) {
+                    await sale.update({ status: 'Concluído' });
+                    console.log(`✅ Sale ${sale.id} confirmed via Debito webhook`);
+                    
+                    // Trigger tracking and external webhooks if productId is present
+                    if (sale.productId) {
+                        const product = await Product.findByPk(sale.productId);
+                        if (product) {
+                            try {
+                                await utmifyService.enviarVenda(sale, product, { name: sale.customer, email: sale.email, phone: sale.phone }, {});
+                            } catch (e) { console.error('UTMify error:', e.message); }
+                            
+                            if (product.webhook_url) {
+                                try {
+                                    await axios.post(product.webhook_url, {
+                                        event: 'order.paid',
+                                        data: { id: sale.id, status: 'paid', amount: sale.amount, reference: txReference }
+                                    }, { timeout: 5000 });
+                                } catch (e) { console.error('Product Webhook error:', e.message); }
+                            }
+                        }
+                    }
+                } else if (isFailure) {
+                    await sale.update({ status: 'Falhado' });
+                }
+            }
+            return res.json({ success: true });
+        }
+
+        // Try Withdrawal
+        const withdrawal = await Withdrawal.findOne({ where: { ref: txReference.toString() } });
+        if (withdrawal) {
+            if (withdrawal.status === 'Pendente') {
+                if (isSuccess) await withdrawal.update({ status: 'Concluído' });
+                else if (isFailure) await withdrawal.update({ status: 'Falhado' });
+            }
+            return res.json({ success: true });
+        }
+
+        return res.status(404).send('Reference not found');
+    } catch (err) {
+        console.error('Debito Webhook Error:', err);
+        res.status(500).send('Internal Error');
+    }
+});
+
 module.exports = router;

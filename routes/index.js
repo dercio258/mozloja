@@ -23,8 +23,18 @@ router.get('/', (req, res) => {
 router.get('/checkout/init/:productId', async (req, res) => {
     try {
         const productId = req.params.productId;
+        // Get product to check for custom expiration
+        const product = await Product.findByPk(productId);
+        
         const token = crypto.randomBytes(16).toString('hex'); // 32 chars alphanumeric
-        const expireHours = parseFloat(process.env.Time_checkout_expire || '1');
+        
+        let expireHours;
+        if (product && product.expiration_hours) {
+            expireHours = product.expiration_hours;
+        } else {
+            expireHours = parseFloat(process.env.Time_checkout_expire || '15');
+        }
+        
         const expiresAt = new Date(Date.now() + expireHours * 60 * 60 * 1000);
 
         // Check if it's a mock product
@@ -243,7 +253,7 @@ router.get('/products/new', isAuthenticated, (req, res) => {
 
 router.post('/products', isAuthenticated, async (req, res) => {
     try {
-        const { name, price, image, description, content_link, pixel_id, utmify_id, webhook_url } = req.body;
+        const { name, price, image, description, content_link, pixel_id, utmify_id, webhook_url, payment_service, expiration_hours } = req.body;
         await Product.create({
             name,
             price: parseFloat(price),
@@ -253,7 +263,9 @@ router.post('/products', isAuthenticated, async (req, res) => {
             pixel_id: pixel_id || null,
             utmify_id: utmify_id || null,
             webhook_url: webhook_url || null,
-            vendedor_id: req.user.id
+            vendedor_id: req.user.id,
+            payment_service: payment_service || 'paysuite',
+            expiration_hours: expiration_hours ? parseInt(expiration_hours) : null
         });
         res.redirect('/products');
     } catch (err) {
@@ -265,12 +277,14 @@ router.post('/products', isAuthenticated, async (req, res) => {
 router.post('/products/update-integrations/:productId', isAuthenticated, async (req, res) => {
     try {
         const { productId } = req.params;
-        const { pixel_id, utmify_id, webhook_url } = req.body;
+        const { pixel_id, utmify_id, webhook_url, payment_service, expiration_hours } = req.body;
 
         await Product.update({
             pixel_id: pixel_id || null,
             utmify_id: utmify_id || null,
-            webhook_url: webhook_url || null
+            webhook_url: webhook_url || null,
+            payment_service: payment_service || 'paysuite',
+            expiration_hours: expiration_hours ? parseInt(expiration_hours) : null
         }, {
             where: { id: productId, vendedor_id: req.user.id }
         });

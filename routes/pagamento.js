@@ -4,6 +4,7 @@ const Sale = require('../models/Sale');
 const Product = require('../models/Product');
 const CheckoutSession = require('../models/CheckoutSession');
 const paysuiteService = require('../services/paysuiteService');
+const debitoService = require('../services/debitoService');
 const approvalService = require('../services/paymentApprovalService');
 const utmTracking = require('../utils/utmTracking');
 
@@ -46,6 +47,7 @@ router.post('/pagar', async (req, res) => {
             vendedor_id: productDetails ? productDetails.vendedor_id : null,
             productId: productDetails ? (productDetails.id || productId) : null,
             external_reference: reference,
+            payment_service: productDetails ? productDetails.payment_service : 'paysuite',
             // Tracking
             utm_source: trackingParams.utm_source,
             utm_medium: trackingParams.utm_medium,
@@ -86,8 +88,11 @@ router.post('/pagar', async (req, res) => {
             }
         }
 
-        // 3. Initiate PaySuite Interaction with total amount
-        const result = await paysuiteService.initiatePayment(totalAmount, phone, provider, reference);
+        // 3. Initiate Chosen Payment Interaction with total amount
+        const paymentService = (productDetails && productDetails.payment_service === 'debito') ? debitoService : paysuiteService;
+        console.log(`[Payment] Using service: ${productDetails?.payment_service || 'paysuite (default)'}`);
+        
+        const result = await paymentService.initiatePayment(totalAmount, phone, provider, reference);
 
         if (result.success || result.status === 'success') {
             const gatewayId = result.data?.id;
@@ -108,7 +113,7 @@ router.post('/pagar', async (req, res) => {
                     attempts++;
                     console.log(`[Polling] Checking status for ${pollId} (Attempt ${attempts})`);
                     
-                    const statusRes = await paysuiteService.checkStatus(pollId);
+                    const statusRes = await paymentService.checkStatus(pollId);
                     
                     // Unified status check (handling both root and data nested status)
                     const status = (statusRes.data?.transaction?.status || statusRes.data?.status || statusRes.status || '').toLowerCase();
