@@ -64,7 +64,15 @@ router.post('/paysuite', async (req, res) => {
                             try {
                                 await axios.post(product.webhook_url, {
                                     event: 'order.paid',
-                                    data: { id: sale.id, status: 'paid', amount: sale.amount, reference: txReference }
+                                    data: { 
+                                        id: sale.id, 
+                                        status: 'paid', 
+                                        amount: sale.amount, 
+                                        customer_phone: sale.phone,
+                                        customer_email: sale.email,
+                                        transaction_id: txReference,
+                                        product_name: product.name
+                                    }
                                 }, { timeout: 5000 });
                             } catch (webhookErr) {
                                 console.error('Webhook error:', webhookErr.message);
@@ -184,7 +192,15 @@ router.post('/debito', async (req, res) => {
                                 const axios = require('axios');
                                 await axios.post(product.webhook_url, {
                                     event: 'order.paid',
-                                    data: { id: s.id, status: 'paid', amount: s.amount, reference: ref }
+                                    data: { 
+                                        id: s.id, 
+                                        status: 'paid', 
+                                        amount: s.amount, 
+                                        customer_phone: s.phone,
+                                        customer_email: s.email,
+                                        transaction_id: ref,
+                                        product_name: product.name
+                                    }
                                 }, { timeout: 5000 });
                             } catch (e) { console.error('Product Webhook error:', e.message); }
                         }
