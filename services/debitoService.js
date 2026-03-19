@@ -33,8 +33,23 @@ class DebitoService {
     sanitizeMsisdn(msisdn) {
         if (!msisdn) return '';
         let clean = msisdn.toString().replace(/\D/g, '');
-        if (clean.startsWith('258') && clean.length === 12) return clean;
-        if (clean.length === 9) return `258${clean}`;
+        
+        // Se já tiver 12 dígitos começando com 258, está correto
+        if (clean.startsWith('258') && clean.length === 12) {
+            return clean;
+        }
+        
+        // Se tiver 9 dígitos e começar com 8 (padrão local), enviar apenas os 9 dígitos
+        // Algumas APIs da Debito preferem o formato local de 9 dígitos para C2B
+        if (clean.length === 9 && ['82', '83', '84', '85', '86', '87'].includes(clean.substring(0, 2))) {
+            return clean;
+        }
+
+        // Caso contrário, tenta garantir o 258 se tiver 9 dígitos mas não começar com 8
+        if (clean.length === 9) {
+            return `258${clean}`;
+        }
+        
         return clean;
     }
 
