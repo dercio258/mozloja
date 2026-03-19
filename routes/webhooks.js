@@ -4,6 +4,7 @@ const Sale = require('../models/Sale');
 const Product = require('../models/Product');
 const Withdrawal = require('../models/Withdrawal');
 const utmifyService = require('../services/utmifyService');
+const { Op } = require('sequelize');
 const axios = require('axios');
 
 // Webhook endpoint for PaySuite
@@ -25,9 +26,15 @@ router.post('/paysuite', async (req, res) => {
         const isSuccess = ['successful', 'completed', 'paid', 'concluido', 'approved', 'success'].includes(normalizedStatus);
         const isFailure = ['failed', 'cancelled', 'expired', 'rejected', 'error'].includes(normalizedStatus);
 
-        // Try to find a Sale first
+        // Try to find a Sale first using robust lookup
         const sale = await Sale.findOne({
-            where: { external_reference: txReference.toString() }
+            where: {
+                [Op.or]: [
+                    { external_reference: txReference.toString() },
+                    { gateway_id: txReference.toString() },
+                    { id: txReference.toString() }
+                ]
+            }
         });
 
         if (sale) {
@@ -105,10 +112,9 @@ router.post('/debito', async (req, res) => {
     try {
         console.log('Received Debito Webhook:', JSON.stringify(req.body));
 
-        // Use reference or transaction_id from the payload
         const { reference, status, transaction_id, external_id } = req.body;
         const txReference = reference || external_id || transaction_id;
-        
+
         if (!txReference) {
             return res.status(400).send('Missing reference identifier');
         }
@@ -118,13 +124,23 @@ router.post('/debito', async (req, res) => {
         const isFailure = ['failed', 'cancelled', 'expired', 'rejected', 'error'].includes(normalizedStatus);
 
         // Try Sale
-        const sale = await Sale.findOne({ where: { external_reference: txReference.toString() } });
+        // Search by multiple possible fields (custom reference or gateway ID from initiation)
+        const sale = await Sale.findOne({
+            where: {
+                [Op.or]: [
+                    { external_reference: txReference.toString() },
+                    { gateway_id: transaction_id ? transaction_id.toString() : null },
+                    { gateway_id: reference ? reference.toString() : null },
+                    { id: txReference.toString() }
+                ]
+            }
+        });
         if (sale) {
             if (sale.status === 'Pendente') {
                 if (isSuccess) {
                     await sale.update({ status: 'Concluído' });
                     console.log(`✅ Sale ${sale.id} confirmed via Debito webhook`);
-                    
+
                     // Trigger tracking and external webhooks if productId is present
                     if (sale.productId) {
                         const product = await Product.findByPk(sale.productId);
@@ -137,7 +153,7 @@ router.post('/debito', async (req, res) => {
                             try {
                                 await utmifyService.enviarVenda(sale, product, { name: sale.customer, email: sale.email, phone: sale.phone }, {});
                             } catch (e) { console.error('UTMify error:', e.message); }
-                            
+
                             if (product.webhook_url) {
                                 try {
                                     await axios.post(product.webhook_url, {
@@ -152,11 +168,18 @@ router.post('/debito', async (req, res) => {
                     await sale.update({ status: 'Falhado' });
                 }
             }
-            return res.json({ success: true });
+            return res.json({ success: true, message: 'Sale updated' });
         }
 
-        // Try Withdrawal
-        const withdrawal = await Withdrawal.findOne({ where: { ref: txReference.toString() } });
+        // Try Withdrawal by ref or transaction ID
+        const withdrawal = await Withdrawal.findOne({
+            where: {
+                [Op.or]: [
+                    { ref: txReference.toString() },
+                    { ref: transaction_id ? transaction_id.toString() : null }
+                ]
+            } 
+        });
         if (withdrawal) {
             if (withdrawal.status === 'Pendente') {
                 if (isSuccess) await withdrawal.update({ status: 'Concluído' });

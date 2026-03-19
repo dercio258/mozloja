@@ -140,10 +140,6 @@ router.post('/pagar', async (req, res) => {
 
             poll();
 
-            // Mark session as used
-            if (sessionToken) {
-                await CheckoutSession.update({ used: true }, { where: { token: sessionToken } });
-            }
 
             return res.json({
                 success: true,

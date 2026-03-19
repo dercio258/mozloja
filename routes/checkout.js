@@ -8,15 +8,17 @@ const utmTracking = require('../utils/utmTracking');
 
 router.get('/c/:token', async (req, res) => {
     try {
-        const { token } = req.params;
-        const session = await CheckoutSession.findOne({ where: { token, used: false } });
+        const { token: sessionToken } = req.params; // Renamed to sessionToken to avoid conflict with the instruction's change
+        // Permite carregar a sessão mesmo que já tenha sido "usada", focando apenas no tempo de expiração para garantir conversão
+        const session = await CheckoutSession.findOne({ where: { token: sessionToken } });
 
         if (!session) {
-            return res.status(404).render('error', { message: 'Sessão de checkout expirada ou não encontrada.' });
+            return res.status(404).render('error', { message: 'Sessão de checkout não encontrada ou expirada.' });
         }
 
-        if (new Date() > session.expiresAt) {
-            return res.status(410).render('error', { message: 'Sessão de checkout expirada.' });
+        // Se a sessão expirou, mas já houve uma tentativa de pagamento, podemos ser flexíveis ou avisar
+        if (new Date() > session.expiresAt && !session.used) {
+            return res.status(410).render('error', { message: 'Sessão de checkout expirada. Por favor, inicie uma nova compra.' });
         }
 
         let product;
