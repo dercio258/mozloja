@@ -110,7 +110,7 @@ router.post('/paysuite', async (req, res) => {
 // Webhook endpoint for Debito
 router.post('/debito', async (req, res) => {
     try {
-        console.log('Received Debito Webhook:', JSON.stringify(req.body));
+        console.log('Received Debito Webhook Payload:', JSON.stringify(req.body));
 
         const { reference, status, transaction_id, external_id } = req.body;
         const txReference = reference || external_id || transaction_id;
@@ -131,43 +131,70 @@ router.post('/debito', async (req, res) => {
                     { external_reference: txReference.toString() },
                     { gateway_id: transaction_id ? transaction_id.toString() : null },
                     { gateway_id: reference ? reference.toString() : null },
-                    { id: txReference.toString() }
+                    { id: txReference ? txReference.toString() : null }
                 ]
-            }
+            } 
         });
-        if (sale) {
-            if (sale.status === 'Pendente') {
-                if (isSuccess) {
-                    await sale.update({ status: 'Concluído' });
-                    console.log(`✅ Sale ${sale.id} confirmed via Debito webhook`);
 
-                    // Trigger tracking and external webhooks if productId is present
-                    if (sale.productId) {
-                        const product = await Product.findByPk(sale.productId);
-                        if (product) {
-                            // Notify via Socket.io for real-time frontend update
-                            const socketService = require('../services/socketService');
-                            const redirectUrl = product.content_link || '/obrigado?venda=' + sale.id;
-                            socketService.notifyPaymentSuccess(sale.id.toString(), redirectUrl);
-
-                            try {
-                                await utmifyService.enviarVenda(sale, product, { name: sale.customer, email: sale.email, phone: sale.phone }, {});
-                            } catch (e) { console.error('UTMify error:', e.message); }
-
-                            if (product.webhook_url) {
-                                try {
-                                    await axios.post(product.webhook_url, {
-                                        event: 'order.paid',
-                                        data: { id: sale.id, status: 'paid', amount: sale.amount, reference: txReference }
-                                    }, { timeout: 5000 });
-                                } catch (e) { console.error('Product Webhook error:', e.message); }
-                            }
-                        }
-                    }
-                } else if (isFailure) {
-                    await sale.update({ status: 'Falhado' });
+        if (!sale) {
+            console.log(`⚠️ Debito Webhook: Sale not found for reference ${txReference} or transaction_id ${transaction_id}`);
+            // Fallback: search by phone and amount if recent (last 30 mins)
+            if (req.body.customer_contact && req.body.amount) {
+                const cleanPhone = req.body.customer_contact.toString().replace(/\D/g, '').slice(-9);
+                const { Op } = require('sequelize');
+                const fallbackSale = await Sale.findOne({
+                    where: {
+                        phone: { [Op.like]: `%${cleanPhone}` },
+                        amount: parseFloat(req.body.amount),
+                        status: 'Pendente',
+                        createdAt: { [Op.gt]: new Date(Date.now() - 30 * 60 * 1000) }
+                    },
+                    order: [['createdAt', 'DESC']]
+                });
+                if (fallbackSale) {
+                    console.log(`✅ Debito Webhook: Found sale ${fallbackSale.id} via fallback (phone/amount)`);
+                    await processConfirmedSale(fallbackSale, txReference);
+                    return res.json({ success: true, message: 'Sale updated via fallback' });
                 }
             }
+            return res.status(404).json({ success: false, message: 'Reference not found' });
+        }
+
+        async function processConfirmedSale(s, ref) {
+            if (s.status === 'Pendente') {
+                await s.update({ status: 'Concluído', gateway_id: transaction_id || ref });
+                console.log(`✅ Sale ${s.id} confirmed via Debito webhook`);
+                
+                // Trigger tracking and external webhooks if productId is present
+                if (s.productId) {
+                    const product = await Product.findByPk(s.productId);
+                    if (product) {
+                        // Notify via Socket.io for real-time frontend update
+                        const socketService = require('../services/socketService');
+                        const redirectUrl = product.content_link || '/obrigado?venda=' + s.id;
+                        socketService.notifyPaymentSuccess(s.id.toString(), redirectUrl);
+
+                        try {
+                            const utmifyService = require('../services/utmifyService');
+                            await utmifyService.enviarVenda(s, product, { name: s.customer, email: s.email, phone: s.phone }, {});
+                        } catch (e) { console.error('UTMify error:', e.message); }
+                        
+                        if (product.webhook_url) {
+                            try {
+                                const axios = require('axios');
+                                await axios.post(product.webhook_url, {
+                                    event: 'order.paid',
+                                    data: { id: s.id, status: 'paid', amount: s.amount, reference: ref }
+                                }, { timeout: 5000 });
+                            } catch (e) { console.error('Product Webhook error:', e.message); }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (sale) {
+            await processConfirmedSale(sale, txReference);
             return res.json({ success: true, message: 'Sale updated' });
         }
 
