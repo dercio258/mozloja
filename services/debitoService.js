@@ -17,7 +17,7 @@ class DebitoService {
         this.walletIdEmola = process.env.DEBITO_WALLET_ID_EMOLA;
         this.defaultWalletId = process.env.DEBITO_WALLET_ID;
 
-        this.timeoutMs = 60000;
+        this.timeoutMs = 45000;
 
         console.log(`🔌 [Debito] Service initialized. Base URL: ${this.baseUrl}`);
     }
@@ -77,12 +77,27 @@ class DebitoService {
                 timeout: this.timeoutMs
             });
 
+            const data = response.data;
+            const apiStatus = (data.status || '').toUpperCase();
+            const isFailed = apiStatus === 'FAILED' || apiStatus === 'ERROR';
+
+            if (isFailed) {
+                console.error(`❌ [Debito] ${provider.toUpperCase()} API reported failure:`, data);
+                return {
+                    success: false,
+                    status: 'error',
+                    message: data.message || 'Falha reportada pela API',
+                    transaction_id: data.transaction_id || data.id || null,
+                    error: data
+                };
+            }
+
             return {
                 success: true,
                 status: 'success',
-                data: response.data,
-                transaction_id: response.data.transaction_id || response.data.id || null,
-                message: response.data.message || 'Pagamento iniciado'
+                data: data,
+                transaction_id: data.transaction_id || data.id || null,
+                message: data.message || 'Pagamento iniciado'
             };
 
         } catch (error) {

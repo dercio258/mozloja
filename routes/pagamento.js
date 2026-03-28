@@ -174,9 +174,10 @@ router.post('/pagar', async (req, res) => {
                 redirect: `/thank-you/${saleId}`
             });
         } else {
+            const errorMsg = result.message || (result.error && (result.error.message || result.error.error)) || 'Falha ao iniciar pagamento';
             return res.status(400).json({ 
                 success: false, 
-                error: result.message || result.error || 'Falha ao iniciar pagamento',
+                error: errorMsg,
                 details: result
             });
         }
