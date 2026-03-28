@@ -118,9 +118,14 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
         };
 
         const now = new Date();
-        const startOfDate = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        
+        // Use a more robust date handling approach
+        const getStartOfDate = (date) => {
+            const d = new Date(date);
+            return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        };
 
-        const todayNum = startOfDate(now);
+        const todayNum = getStartOfDate(now);
         const yesterdayNum = todayNum - (24 * 60 * 60 * 1000);
         const sevenDaysAgo = todayNum - (7 * 24 * 60 * 60 * 1000);
         const thirtyDaysAgo = todayNum - (30 * 24 * 60 * 60 * 1000);
@@ -150,7 +155,7 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
         sales.forEach(sale => {
             if (!sale.createdAt) return;
             const saleDate = new Date(sale.createdAt);
-            const saleTime = startOfDate(saleDate);
+            const saleTime = getStartOfDate(saleDate);
             const saleHourStr = `${saleDate.getHours()}h`;
 
             // Global/Total stats
@@ -203,7 +208,7 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
 
         withdrawals.forEach(wd => {
             if (wd.status === 'Concluído' && wd.createdAt) {
-                const wdTime = startOfDate(new Date(wd.createdAt));
+                const wdTime = getStartOfDate(new Date(wd.createdAt));
                 metrics.total.balance -= wd.amount;
                 if (wdTime === todayNum) metrics.today.balance -= wd.amount;
                 if (wdTime === yesterdayNum) metrics.yesterday.balance -= wd.amount;

@@ -120,10 +120,25 @@ router.post('/debito', async (req, res) => {
     try {
         console.log('Received Debito Webhook Payload:', JSON.stringify(req.body));
 
-        const { reference, status, transaction_id, external_id } = req.body;
-        const txReference = reference || external_id || transaction_id;
+        // Extract multiple possible reference fields from payload
+        const { 
+            reference, 
+            status, 
+            transaction_id, 
+            external_id, 
+            id,
+            payment_id,
+            tx_id,
+            customer_contact,
+            msisdn,
+            phone: payloadPhone
+        } = req.body;
 
-        if (!txReference) {
+        const txReference = reference || external_id || transaction_id || id || payment_id || tx_id;
+        
+        console.log(`🔍 [Debito Webhook] Searching for sale with ref: ${txReference}, transaction_id: ${transaction_id || id}`);
+
+        if (!txReference && !customer_contact && !msisdn && !payloadPhone) {
             return res.status(400).send('Missing reference identifier');
         }
 
@@ -131,37 +146,37 @@ router.post('/debito', async (req, res) => {
         const isSuccess = ['successful', 'completed', 'paid', 'concluido', 'approved', 'success'].includes(normalizedStatus);
         const isFailure = ['failed', 'cancelled', 'expired', 'rejected', 'error'].includes(normalizedStatus);
 
-        // Try Sale
-        // Search by multiple possible fields (custom reference or gateway ID from initiation)
+        // Try Sale - robust lookup
         const sale = await Sale.findOne({
             where: {
                 [Op.or]: [
-                    { external_reference: txReference.toString() },
-                    { gateway_id: transaction_id ? transaction_id.toString() : null },
-                    { gateway_id: reference ? reference.toString() : null },
-                    { id: txReference ? txReference.toString() : null }
+                    { external_reference: txReference ? txReference.toString() : '___NONE___' },
+                    { gateway_id: transaction_id ? transaction_id.toString() : '___NONE___' },
+                    { gateway_id: id ? id.toString() : '___NONE___' },
+                    { gateway_id: reference ? reference.toString() : '___NONE___' },
+                    { id: txReference ? txReference.toString() : '___NONE___' }
                 ]
             } 
         });
 
         if (!sale) {
-            console.log(`⚠️ Debito Webhook: Sale not found for reference ${txReference} or transaction_id ${transaction_id}`);
-            // Fallback: search by phone and amount if recent (last 30 mins)
-            if (req.body.customer_contact && req.body.amount) {
-                const cleanPhone = req.body.customer_contact.toString().replace(/\D/g, '').slice(-9);
-                const { Op } = require('sequelize');
+            console.log(`⚠️ Debito Webhook: Sale not found for reference ${txReference}. Trying fallback...`);
+            // Fallback: search by phone and amount if recent (last 60 mins)
+            const contact = customer_contact || msisdn || payloadPhone;
+            if (contact && req.body.amount) {
+                const cleanPhone = contact.toString().replace(/\D/g, '').slice(-9);
                 const fallbackSale = await Sale.findOne({
                     where: {
                         phone: { [Op.like]: `%${cleanPhone}` },
                         amount: parseFloat(req.body.amount),
                         status: 'Pendente',
-                        createdAt: { [Op.gt]: new Date(Date.now() - 30 * 60 * 1000) }
+                        createdAt: { [Op.gt]: new Date(Date.now() - 60 * 60 * 1000) }
                     },
                     order: [['createdAt', 'DESC']]
                 });
                 if (fallbackSale) {
-                    console.log(`✅ Debito Webhook: Found sale ${fallbackSale.id} via fallback (phone/amount)`);
-                    await processConfirmedSale(fallbackSale, txReference);
+                    console.log(`✅ Debito Webhook: Found sale ${fallbackSale.id} via fallback (phone ${cleanPhone} / amount ${req.body.amount})`);
+                    await processConfirmedSale(fallbackSale, txReference || id || 'FALLBACK');
                     return res.json({ success: true, message: 'Sale updated via fallback' });
                 }
             }

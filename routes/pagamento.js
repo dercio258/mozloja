@@ -102,33 +102,44 @@ router.post('/pagar', async (req, res) => {
                 await Sale.update({ gateway_id: gatewayId }, { where: { external_reference: reference } });
             }
 
-            // 4. Optionally Polling for final confirmation
+            // 4. Polling for final confirmation
             const poll = async () => {
-                // Skip polling for Debito service as requested by user
-                if (paymentService === debitoService) {
-                    console.log(`[Payment] Skipping polling for Debito service ref: ${reference}`);
+                const isDebito = paymentService === debitoService;
+                const pollId = gatewayId || reference;
+                
+                if (isDebito) {
+                    // Specific logic for Debito: wait 2 minutes (120s) and then check once
+                    console.log(`[Payment] Scheduling 2-minute fallback status check for Debito ref: ${reference}`);
+                    setTimeout(async () => {
+                        console.log(`[Fallback] Performing 2-minute status check for Debito ref: ${pollId}`);
+                        const statusRes = await paymentService.checkStatus(pollId);
+                        const status = (statusRes.data?.status || statusRes.status || '').toLowerCase();
+                        
+                        if (statusRes.success && ['successful', 'completed', 'paid', 'approved', 'concluido'].includes(status)) {
+                            console.log(`[Fallback] SUCCESS! Approving sale for Debito ref: ${reference}`);
+                            await approvalService.approveSale(reference);
+                        } else {
+                            console.log(`[Fallback] Status for ${pollId} is still ${status || 'unknown'}`);
+                        }
+                    }, 120000); // 120 seconds
                     return;
                 }
 
-                const pollId = gatewayId || reference;
-            
+                // Standard polling for other services (PaySuite)
                 let attempts = 0;
-                const maxAttempts = 3; // 2 minutes total at 40s
+                const maxAttempts = 3; 
                 
                 const interval = setInterval(async () => {
                     attempts++;
                     console.log(`[Polling] Checking status for ${pollId} (Attempt ${attempts})`);
                     
                     const statusRes = await paymentService.checkStatus(pollId);
-                    
-                    // Unified status check (handling both root and data nested status)
                     const status = (statusRes.data?.transaction?.status || statusRes.data?.status || statusRes.status || '').toLowerCase();
-                    console.log(`[Polling] Status for ${pollId}: ${status}`);
                     
                     if (statusRes.success && ['successful', 'completed', 'paid', 'approved'].includes(status)) {
                         console.log(`[Polling] SUCCESS! Approving sale for ref: ${reference}`);
                         clearInterval(interval);
-                        await approvalService.approveSale(reference); // Still uses custom reference for DB lookup
+                        await approvalService.approveSale(reference);
                     }
 
                     if (attempts >= maxAttempts) {

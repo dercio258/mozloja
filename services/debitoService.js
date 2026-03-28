@@ -96,9 +96,35 @@ class DebitoService {
         }
     }
 
-    async checkStatus(transactionId) {
-        // Implement status check if the Debito API supports it, otherwise return pending
-        return { success: true, status: 'pending' };
+    async checkStatus(reference) {
+        try {
+            // URL format: /api/v1/transactions/{reference}/status
+            const url = `${this.baseUrl}/api/v1/transactions/${reference}/status`;
+            
+            console.log(`🔍 [Debito] Checking status for ref: ${reference}`);
+            
+            const response = await axios.get(url, {
+                headers: this.getHeaders(),
+                timeout: 10000
+            });
+
+            // Standardize response to match what pagamento.js expects
+            const data = response.data;
+            const apiStatus = (data.status || data.data?.status || '').toLowerCase();
+
+            return {
+                success: true,
+                status: apiStatus,
+                data: data
+            };
+        } catch (error) {
+            console.error(`❌ [Debito] Status check failed for ${reference}:`, error.response?.data || error.message);
+            return {
+                success: false,
+                status: 'error',
+                message: error.response?.data?.message || error.message
+            };
+        }
     }
 }
 
