@@ -185,8 +185,15 @@ router.post('/debito', async (req, res) => {
 
         async function processConfirmedSale(s, ref) {
             if (s.status === 'Pendente') {
-                await s.update({ status: 'Concluído', gateway_id: transaction_id || ref });
-                console.log(`✅ Sale ${s.id} confirmed via Debito webhook`);
+                if (isSuccess) {
+                    await s.update({ status: 'Concluído', gateway_id: transaction_id || ref });
+                    console.log(`✅ Sale ${s.id} confirmed via Debito webhook`);
+                } else if (isFailure) {
+                    await s.update({ status: 'Falhado', gateway_id: transaction_id || ref });
+                    console.log(`❌ Sale ${s.id} marked as failed via Debito webhook`);
+                } else {
+                    console.log(`ℹ️ Debito Webhook: Status is ${normalizedStatus}, no action taken.`);
+                }
                 
                 // Trigger tracking and external webhooks if productId is present
                 if (s.productId) {

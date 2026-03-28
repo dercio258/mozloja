@@ -95,11 +95,26 @@ router.post('/pagar', async (req, res) => {
         const result = await paymentService.initiatePayment(totalAmount, phone, provider, reference);
 
         if (result.success || result.status === 'success') {
-            const gatewayId = result.data?.id;
+            const gatewayId = result.transaction_id || result.data?.transaction_id || result.data?.id;
 
             // Update all sales with the internal gateway ID if available
             if (gatewayId) {
                 await Sale.update({ gateway_id: gatewayId }, { where: { external_reference: reference } });
+            }
+
+            // Check for immediate success (especially common for M-Pesa via Debito)
+            const initStatus = (result.status || result.data?.status || '').toLowerCase();
+            const isImmediateSuccess = ['successful', 'completed', 'paid', 'approved', 'concluido', 'success'].includes(initStatus);
+
+            if (isImmediateSuccess) {
+                console.log(`[Payment] 🎉 Immediate success for ref: ${reference}`);
+                await approvalService.approveSale(reference);
+                return res.json({
+                    success: true,
+                    saleId: saleId,
+                    message: 'Pagamento recebido com sucesso!',
+                    redirect: `/thank-you/${saleId}`
+                });
             }
 
             // 4. Polling for final confirmation
@@ -108,10 +123,10 @@ router.post('/pagar', async (req, res) => {
                 const pollId = gatewayId || reference;
                 
                 if (isDebito) {
-                    // Specific logic for Debito: wait 2 minutes (120s) and then check once
-                    console.log(`[Payment] Scheduling 2-minute fallback status check for Debito ref: ${reference}`);
+                    // Specific logic for Debito: wait 1 minute (60s) and then check once
+                    console.log(`[Payment] Scheduling 1-minute fallback status check for Debito ref: ${reference}`);
                     setTimeout(async () => {
-                        console.log(`[Fallback] Performing 2-minute status check for Debito ref: ${pollId}`);
+                        console.log(`[Fallback] Performing 1-minute status check for Debito ref: ${pollId}`);
                         const statusRes = await paymentService.checkStatus(pollId);
                         const status = (statusRes.data?.status || statusRes.status || '').toLowerCase();
                         
@@ -121,7 +136,7 @@ router.post('/pagar', async (req, res) => {
                         } else {
                             console.log(`[Fallback] Status for ${pollId} is still ${status || 'unknown'}`);
                         }
-                    }, 120000); // 120 seconds
+                    }, 60000); // 60 seconds
                     return;
                 }
 

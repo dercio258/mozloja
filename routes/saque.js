@@ -5,18 +5,33 @@ const Sale = require('../models/Sale');
 const Withdrawal = require('../models/Withdrawal');
 
 // Calculate balance helper
-const getBalanceAndHistory = async () => {
-    const sales = await Sale.sum('amount', { where: { status: 'Concluído' } }) || 0;
-    const withdrawalsSum = await Withdrawal.sum('amount', { where: { status: 'Concluído' } }) || 0;
+const getBalanceAndHistory = async (vendedor_id) => {
+    const whereClause = vendedor_id ? { vendedor_id } : {};
+    
+    const sales = await Sale.sum('amount', { 
+        where: { ...whereClause, status: 'Concluído' } 
+    }) || 0;
+    
+    // Subtrair saques Concluídos E Pendentes para evitar gasto duplo
+    const withdrawalsSum = await Withdrawal.sum('amount', { 
+        where: { 
+            ...whereClause, 
+            status: ['Concluído', 'Pendente'] 
+        } 
+    }) || 0;
+    
     const balance = sales - withdrawalsSum;
-    const withdrawals = await Withdrawal.findAll({ order: [['createdAt', 'DESC']] });
+    const withdrawals = await Withdrawal.findAll({ 
+        where: whereClause,
+        order: [['createdAt', 'DESC']] 
+    });
     return { balance, withdrawals };
 };
 
 // Renderiza a página de Saque
 router.get('/', async (req, res) => {
     try {
-        const { balance, withdrawals } = await getBalanceAndHistory();
+        const { balance, withdrawals } = await getBalanceAndHistory(req.user.id);
         res.render('saque', {
             balance,
             withdrawals,
@@ -32,10 +47,21 @@ router.get('/', async (req, res) => {
 // Processa o pedido de Saque
 router.post('/process', async (req, res) => {
     try {
-        const { amount, phone, provider } = req.body;
+        const { amount, phone, provider, saque_code } = req.body;
         const withdrawAmount = parseFloat(amount);
 
-        const { balance, withdrawals } = await getBalanceAndHistory();
+        const { balance, withdrawals } = await getBalanceAndHistory(req.user.id);
+
+        // Verificação do Código de Saque
+        const envSaqueCode = process.env.saque_code || 'mozloja123_online';
+        if (saque_code !== envSaqueCode) {
+            return res.render('saque', {
+                balance,
+                withdrawals,
+                error: 'Código de saque inválido.',
+                success: null
+            });
+        }
 
         // Validações locais
         if (!withdrawAmount || isNaN(withdrawAmount) || withdrawAmount < 1) {
@@ -79,7 +105,7 @@ router.post('/process', async (req, res) => {
                 vendedor_id: req.user.id
             });
 
-            const updated = await getBalanceAndHistory();
+            const updated = await getBalanceAndHistory(req.user.id);
 
             res.render('saque', {
                 balance: updated.balance,
@@ -97,10 +123,11 @@ router.post('/process', async (req, res) => {
                 method: provider,
                 amount: withdrawAmount,
                 status: 'Falhado',
-                ref: 'Erro: ' + errorMsg.substring(0, 50)
+                ref: 'Erro: ' + errorMsg.substring(0, 50),
+                vendedor_id: req.user.id
             });
 
-            const updated = await getBalanceAndHistory();
+            const updated = await getBalanceAndHistory(req.user.id);
 
             res.render('saque', {
                 balance: updated.balance,

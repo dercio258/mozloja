@@ -207,7 +207,7 @@ router.get('/dashboard', isAuthenticated, async (req, res) => {
         });
 
         withdrawals.forEach(wd => {
-            if (wd.status === 'Concluído' && wd.createdAt) {
+            if (['Concluído', 'Pendente'].includes(wd.status) && wd.createdAt) {
                 const wdTime = getStartOfDate(new Date(wd.createdAt));
                 metrics.total.balance -= wd.amount;
                 if (wdTime === todayNum) metrics.today.balance -= wd.amount;

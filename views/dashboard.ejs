@@ -64,6 +64,35 @@
                 </p>
             </div>
         </div>
+
+        <h2 style="margin-top: 2rem; font-size: 1.25rem;">Vendas Pendentes</h2>
+        <div class="metrics"
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-top: 1rem;">
+            <div class="card" style="border-left: 4px solid #f59e0b; text-align: center;">
+                <h3 style="font-size: 0.85em; text-transform: uppercase;">Hoje</h3>
+                <p style="color: #f59e0b; font-size: 1.5rem; font-weight: 700;">
+                    <%= metrics.today.pending %>
+                </p>
+            </div>
+            <div class="card" style="border-left: 4px solid #f59e0b; text-align: center;">
+                <h3 style="font-size: 0.85em; text-transform: uppercase;">Ontem</h3>
+                <p style="color: #f59e0b; font-size: 1.5rem; font-weight: 700;">
+                    <%= metrics.yesterday.pending %>
+                </p>
+            </div>
+            <div class="card" style="border-left: 4px solid #f59e0b; text-align: center;">
+                <h3 style="font-size: 0.85em; text-transform: uppercase;">Últimos 7 Dias</h3>
+                <p style="color: #f59e0b; font-size: 1.5rem; font-weight: 700;">
+                    <%= metrics.sevenDays.pending %>
+                </p>
+            </div>
+            <div class="card" style="border-left: 4px solid #f59e0b; text-align: center;">
+                <h3 style="font-size: 0.85em; text-transform: uppercase;">Últimos 30 Dias</h3>
+                <p style="color: #f59e0b; font-size: 1.5rem; font-weight: 700;">
+                    <%= metrics.thirtyDays.pending %>
+                </p>
+            </div>
+        </div>
     </div>
 
     <div class="chart-container" style="margin-top: 2rem; position: relative; height: 350px; width: 100%;">

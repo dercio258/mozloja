@@ -177,6 +177,12 @@
                                     max="<%= (locals.balance || 0) %>" required>
                             </div>
 
+                            <div class="input-group">
+                                <label>Código de Saque</label>
+                                <input type="password" name="saque_code" placeholder="Digite o código de segurança" required>
+                                <small style="color: var(--text-muted); font-size: 0.75rem;">O código de saque deve ser solicitado ao administrador.</small>
+                            </div>
+
                             <button type="submit" style="margin-top: 1rem;" <%=(locals.balance || 0) < 1 ? 'disabled'
                                 : '' %>>Confirmar Saque</button>
                         </form>
