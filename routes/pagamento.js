@@ -104,7 +104,7 @@ router.post('/pagar', async (req, res) => {
 
             // Check for immediate success (especially common for M-Pesa via Debito)
             const initStatus = (result.status || result.data?.status || '').toLowerCase();
-            const isImmediateSuccess = ['successful', 'completed', 'paid', 'approved', 'concluido', 'success'].includes(initStatus);
+            const isImmediateSuccess = ['successful', 'completed', 'paid', 'approved'].includes(initStatus);
 
             if (isImmediateSuccess) {
                 console.log(`[Payment] 🎉 Immediate success for ref: ${reference}`);

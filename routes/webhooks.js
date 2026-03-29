@@ -23,7 +23,7 @@ router.post('/paysuite', async (req, res) => {
         }
 
         const normalizedStatus = txStatus ? txStatus.toLowerCase() : '';
-        const isSuccess = ['successful', 'completed', 'paid', 'concluido', 'approved', 'success'].includes(normalizedStatus);
+        const isSuccess = ['successful', 'completed', 'paid', 'approved'].includes(normalizedStatus);
         const isFailure = ['failed', 'cancelled', 'expired', 'rejected', 'error'].includes(normalizedStatus);
 
         // Try to find a Sale first using robust lookup
@@ -143,7 +143,7 @@ router.post('/debito', async (req, res) => {
         }
 
         const normalizedStatus = status ? status.toLowerCase() : '';
-        const isSuccess = ['successful', 'completed', 'paid', 'concluido', 'approved', 'success'].includes(normalizedStatus);
+        const isSuccess = ['successful', 'completed', 'paid', 'approved'].includes(normalizedStatus);
         const isFailure = ['failed', 'cancelled', 'expired', 'rejected', 'error'].includes(normalizedStatus);
 
         // Try Sale - robust lookup
