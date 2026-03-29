@@ -11,6 +11,7 @@ const checkoutRoutes = require('./routes/checkout');
 const saqueRoutes = require('./routes/saque');
 const pagamentoRoutes = require('./routes/pagamento');
 const webhookRoutes = require('./routes/webhooks');
+const adminRoutes = require('./routes/admin');
 const sequelize = require('./config/database');
 
 // Import models to ensure they are registered with Sequelize
@@ -73,6 +74,7 @@ app.use('/', checkoutRoutes);
 app.use('/saque', saqueRoutes);
 app.use('/api', pagamentoRoutes);
 app.use('/webhooks', webhookRoutes);
+app.use('/admin', adminRoutes);
 
 const socketService = require('./services/socketService');
 
@@ -87,6 +89,14 @@ sequelize.sync({ alter: true }).then(async () => {
 
     server.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
+        
+        // Generate Admin Access Code for User Listing
+        const adminCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+        app.locals.adminAccessCode = adminCode;
+        console.log('\n' + '='.repeat(40));
+        console.log(`[ADMIN] User List Access Code: ${adminCode}`);
+        console.log(`[ADMIN] URL: http://localhost:${PORT}/admin/users?code=${adminCode}`);
+        console.log('='.repeat(40) + '\n');
     });
 }).catch(err => {
     console.error('Unable to connect to the database:', err);
