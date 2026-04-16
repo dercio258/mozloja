@@ -97,6 +97,7 @@ class DebitoService {
                 status: 'success',
                 data: data,
                 transaction_id: data.transaction_id || data.id || null,
+                debito_reference: data.debito_reference || null,
                 message: data.message || 'Pagamento iniciado'
             };
 

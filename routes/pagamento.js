@@ -123,20 +123,47 @@ router.post('/pagar', async (req, res) => {
                 const pollId = gatewayId || reference;
                 
                 if (isDebito) {
-                    // Specific logic for Debito: wait 1 minute (60s) and then check once
-                    console.log(`[Payment] Scheduling 1-minute fallback status check for Debito ref: ${reference}`);
-                    setTimeout(async () => {
-                        console.log(`[Fallback] Performing 1-minute status check for Debito ref: ${pollId}`);
-                        const statusRes = await paymentService.checkStatus(pollId);
-                        const status = (statusRes.data?.status || statusRes.status || '').toLowerCase();
+                    // Specific logic for Debito: poll every 20s for up to 2 minutes (6 attempts)
+                    const debitoRef = result.debito_reference || gatewayId || reference;
+                    let debitoAttempts = 0;
+                    const maxDebitoAttempts = 6; // 6 * 20s = 120s (2 minutes)
+                    
+                    console.log(`[Payment] Scheduling 20s interval status check for Debito ref: ${debitoRef}`);
+                    
+                    const debitoInterval = setInterval(async () => {
+                        debitoAttempts++;
+                        console.log(`[Fallback-Debito] Attempt ${debitoAttempts}/${maxDebitoAttempts} for ref: ${debitoRef}`);
                         
-                        if (statusRes.success && ['successful', 'completed', 'paid', 'approved', 'concluido'].includes(status)) {
-                            console.log(`[Fallback] SUCCESS! Approving sale for Debito ref: ${reference}`);
-                            await approvalService.approveSale(reference);
-                        } else {
-                            console.log(`[Fallback] Status for ${pollId} is still ${status || 'unknown'}`);
+                        try {
+                            const statusRes = await paymentService.checkStatus(debitoRef);
+                            const status = (statusRes.data?.status || statusRes.status || '').toLowerCase();
+                            
+                            console.log(`[Fallback-Debito] Current status for ${debitoRef}: ${status}`);
+
+                            if (statusRes.success && ['successful', 'completed', 'paid', 'approved', 'concluido'].includes(status)) {
+                                console.log(`[Fallback-Debito] SUCCESS! Approving sale for ref: ${reference}`);
+                                clearInterval(debitoInterval);
+                                await approvalService.approveSale(reference);
+                            } else if (['failed', 'cancelled', 'error', 'expired', 'falhado', 'cancelado'].includes(status)) {
+                                // Stop polling only on definitive failure
+                                console.log(`[Fallback-Debito] Stopping polling as status is final (failed): ${status}`);
+                                clearInterval(debitoInterval);
+                            } else {
+                                // Status is 'pendente', 'processing', etc. Keep polling.
+                                console.log(`[Fallback-Debito] Status is ${status}. Continuing polling...`);
+                            }
+                        } catch (err) {
+                            console.error(`[Fallback-Debito] Error checking status for ${debitoRef}:`, err.message);
                         }
-                    }, 60000); // 60 seconds
+
+                        if (debitoAttempts >= maxDebitoAttempts) {
+                            console.log(`[Fallback-Debito] Max attempts reached for ${debitoRef}. Marking as Falhado.`);
+                            clearInterval(debitoInterval);
+                            
+                            // Definitive failure if timeout reached
+                            await Sale.update({ status: 'Falhado' }, { where: { external_reference: reference } });
+                        }
+                    }, 20000); // 20 seconds
                     return;
                 }
 
